@@ -11,6 +11,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
 
+/**
+ * Part 1: Our implementation pulls inspiration from:
+ * Markku-Juhani O. Saarinen
+ * <https://github.com/mjosaarinen/tiny_sha3/blob/master/sha3.c>
+ */
 public class Main {
 
     public static void main(String[] args) throws IOException {
