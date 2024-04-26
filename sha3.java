@@ -126,7 +126,7 @@ public class sha3 {
      * @param c  the context
      * @param mdlen Length of the message digest in bytes.
      */
-    public void sha3_init(sha3_ctx_t c, int mdlen) {
+    private static void sha3_init(sha3_ctx_t c, int mdlen) {
         for (int i = 0; i < 25; i++) {
             c.stWords[i] = 0;
         }
@@ -141,7 +141,7 @@ public class sha3 {
      * @param data Input data as byte array.
      * @param len of the input data in bytes
      */
-    public void sha3_update(sha3_ctx_t c, byte[] data, int len) {
+    private static void sha3_update(sha3_ctx_t c, byte[] data, int len) {
         int j = c.pt;
         for (int i = 0; i < len; i++) {
             c.stBytes[j++] ^= data[i];
@@ -153,42 +153,20 @@ public class sha3 {
         c.pt = j;
     }
 
-    /**
-     * Finalize and output a hash.
-     *
-     * @param md The byte array to store the computed hash.
-     * @param c  The context containing the internal state.
-     */
-    public void sha3_final(byte[] md, sha3_ctx_t c)  {
 
 
-        // XOR the appropriate bytes in the state array
-        c.stBytes[c.pt] ^= 0x06;
-        c.stBytes[c.rsiz - 1] ^= 0x80;
-
-        // Perform the Keccak-f permutation
-        sha3_keccakf(c.stWords);
-
-        // Copy the hash to the output byte array if the message digest length is valid
-        if (c.mdlen >= 0) {
-            for (int i = 0; i < c.mdlen; i++) {
-                md[i] = c.stBytes[i];
-            }
-        }
-    }
-
-
-    /**
-     * Compute a SHA-3 hash of given byte length from input.
-     *
-     * @param in Input data as byte array.
-     * @return The computed hash as a byte array.
-     */
-    public byte[] sha3(byte[] in) {
-        sha3_init(mdlen);
-        sha3_update(in);
-        return sha3_final();
-    }
+//
+//    /**
+//     * Compute a SHA-3 hash of given byte length from input.
+//     *
+//     * @param in Input data as byte array.
+//     * @return The computed hash as a byte array.
+//     */
+//    public byte[] sha3(byte[] in) {
+//        sha3_init(mdlen);
+//        sha3_update(in);
+//        return sha3_final();
+//    }
 
     /**
      * Encode an integer as a byte array in a way that can be parsed from the beginning of the string.
@@ -231,6 +209,145 @@ public class sha3 {
         return result;
 
 }
+    /**
+     *
+     * This method prepares the SHA-3 hash context for generating additional output using the extensible-output feature.
+     * For cSHAKE, it XORs the byte at the current position with the provided xorValue (0x04 for cShake, 0x1F for Shake),
+     * XORs the byte at the end of the byte array with 0x80 to mark the end of input,
+     * performs the Keccak-f permutation on the state represented by stWords array,
+     * and resets the position pointer to 0 for subsequent operations.
+     *
+     * @param c   The context containing the internal state.
+     * @param xorValue The XOR value used for customization. For cSHAKE, it's 0x04 for cShake, and 0x1F for Shake.
+     */
+    static void shake_xof(sha3_ctx_t c, byte xorValue) {
+        // XORs the byte at the current position with the provided xorValue
+        c.stBytes[c.pt] ^= xorValue;
+
+        // XORs the byte at the end of the byte array with 0x80 to mark the end of input
+        c.stBytes[c.rsiz - 1] ^= 0x80;
+
+        // Performs the Keccak-f permutation on the state represented by stWords array
+        sha3_keccakf(c.stWords);
+
+        // Resets the position pointer to 0 for subsequent operations
+        c.pt = 0;
+    }
+    /**
+     * Extracts output bytes from the SHA-3 hash context.
+     * This method retrieves output bytes from the SHA-3 hash context,
+     * writing them to the provided output array.
+     *
+     * @param c   The  context representing the state of the hash function.
+     * @param out The output array where the extracted bytes will be stored.
+     * @param len The number of bytes to extract from the context.
+     */
+    private static void shake_out(sha3_ctx_t c, byte[] out, int len) {
+        int j = c.pt;
+        for (int i = 0; i < len; i++) {
+            if (j >= c.rsiz) {
+                sha3_keccakf(c.stWords);
+                j = 0;
+            }
+            out[i] = c.stBytes[j++];
+        }
+
+        c.pt = j;
+    }
+
+    /**
+     * Absorbs the input data into the sponge state.
+     *
+     * @param c  The context containing the internal state.
+     * @param data The input data to be absorbed.
+     */
+    private static void absorb(sha3_ctx_t c, byte[] data) {
+        sha3_init(c, 32); // Initialize SHA-3 context with a hash length of 256 bits
+        sha3_update(c, data, data.length);
+    }
+
+    /**
+     * Squeezes the sponge state to generate output bytes.
+     *
+     * @param c  The context containing the internal state.
+     * @param len The length of the output in bytes.
+     * @param xorValue The XOR value used for customization. For cSHAKE, it's 0x04 for cShake, and 0x1F for Shake.
+     * @return The output bytes generated by squeezing the sponge state.
+     */
+    private static byte[] squeeze(sha3_ctx_t c, int len, byte xorValue ) {
+        byte[] result = new byte[len];
+        shake_xof(c, xorValue); // Prepare for squeezing with cSHAKE customization if flag is true
+        shake_out(c, result, len);
+        return result;
+    }
+
+    /**
+     * Applies the sponge construction to perform hashing or extendable-output functions (XOF).
+     *
+     * @param data The input data to be processed.
+     * @param len   The desired output length in bits.
+     * @param xorValue The XOR value used for customization. For cSHAKE, it's 0x04 for cShake, and 0x1F for Shake.
+     * @return The output bytes generated by the sponge function.
+     */
+    private static byte[] sponge(sha3_ctx_t c,byte[] data, int len, byte xorValue ) {
+        int inputLen = len / 8;
+        absorb(c, data); // Absorb the input data into the sponge state
+        return squeeze(c, inputLen ,xorValue  ); // Squeeze the sponge state to generate output bytes
+    }
+
+    /**
+     * Compute SHAKE256 hash, which is an Extendable-Output Function (XOF) based on SHA-3.
+     * SHAKE256 allows generating variable-length hash outputs.
+     *
+     * @param X The input data as byte array.
+     * @param L The desired output length in bits.
+     * @return The computed SHAKE256 hash as a byte array.
+     */
+    public static byte[]  SHAKE256(byte[] X, int L) {
+        sha3_ctx_t c = new sha3_ctx_t(); // Context for SHAKE256 function
+        byte[] input = new byte[X.length]; // Create input array of same length as data
+        for (int i = 0; i < X.length; i++) {
+            input[i] = X[i]; // Copy data into input array
+        }
+        return sponge(c, input, L, (byte) 0x1F); // Use 0x1F for Shake customization
+    }
+
+    /**
+     * Compute cSHAKE256 hash, which is an Extendable-Output Function (XOF) based on SHA-3
+     * with additional domain separation capability provided by the function name and customization string.
+     * cSHAKE256 allows generating variable-length hash outputs.
+     *
+     * @param X The main input bit string.
+     * @param L The requested output length in bits.
+     * @param N The function-name bit string.
+     * @param S The customization bit string.
+     * @return The computed cSHAKE256 hash as a byte array.
+     */
+    public static byte[] cSHAKE256(byte[] X, int L, byte[] N, byte[] S) {
+        byte[] encodedN = encode_string(bytepad(encode_string(N), 136)); // Encoding with padding
+        byte[] encodedS = encode_string(S);
+        int inputLen = encodedN.length + encodedS.length + X.length;
+        byte[] input = new byte[inputLen];
+
+        // Copy encoded function name
+        int index = 0;
+        for (byte b : encodedN) {
+            input[index++] = b;
+        }
+
+        // Copy encoded customization string
+        for (byte b : encodedS) {
+            input[index++] = b;
+        }
+
+        // Copy input data
+        for (byte b : X) {
+            input[index++] = b;
+        }
+
+        sha3_ctx_t c = new sha3_ctx_t(); // Context for cSHAKE256 function
+        return sponge(c, input, L, (byte) 0x04); // Use 0x04 for cShake customization
+    }
 
     /**
      * Encode an integer as a byte array in a way that can be parsed from the end of the string.
