@@ -304,6 +304,7 @@ public class sha3 {
      * @return The computed SHAKE256 hash as a byte array.
      */
     public static byte[]  SHAKE256(byte[] X, int L) {
+
         sha3_ctx_t c = new sha3_ctx_t(); // Context for SHAKE256 function
         byte[] input = new byte[X.length]; // Create input array of same length as data
         for (int i = 0; i < X.length; i++) {
@@ -324,29 +325,35 @@ public class sha3 {
      * @return The computed cSHAKE256 hash as a byte array.
      */
     public static byte[] cSHAKE256(byte[] X, int L, byte[] N, byte[] S) {
-        byte[] encodedN = encode_string(bytepad(encode_string(N), 136)); // Encoding with padding
-        byte[] encodedS = encode_string(S);
-        int inputLen = encodedN.length + encodedS.length + X.length;
-        byte[] input = new byte[inputLen];
+        if (N.length == 0 && S.length == 0) {
+            return  SHAKE256(X, L); // Use SHAKE256 if N and S are empty
+        } else {
 
-        // Copy encoded function name
-        int index = 0;
-        for (byte b : encodedN) {
-            input[index++] = b;
+
+            byte[] storedN = encode_string(bytepad(encode_string(N), 136)); // Encoding with padding
+            byte[] storedS = encode_string(S);
+            int inputLen = storedN.length + storedS.length + X.length;
+            byte[] input = new byte[inputLen];
+
+            // Copy encoded function name
+            int index = 0;
+            for (byte b : storedN) {
+                input[index++] = b;
+            }
+
+            // Copy encoded customization string
+            for (byte b : storedS) {
+                input[index++] = b;
+            }
+
+            // Copy input data
+            for (byte b : X) {
+                input[index++] = b;
+            }
+
+            sha3_ctx_t c = new sha3_ctx_t(); // Context for cSHAKE256 function
+            return sponge(c, input, L, (byte) 0x04); // Use 0x04 for cShake customization
         }
-
-        // Copy encoded customization string
-        for (byte b : encodedS) {
-            input[index++] = b;
-        }
-
-        // Copy input data
-        for (byte b : X) {
-            input[index++] = b;
-        }
-
-        sha3_ctx_t c = new sha3_ctx_t(); // Context for cSHAKE256 function
-        return sponge(c, input, L, (byte) 0x04); // Use 0x04 for cShake customization
     }
 
     /**
