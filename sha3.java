@@ -356,53 +356,47 @@ public class sha3 {
         }
     }
     /**
-     * Compute KMACXOF256 hash, which is a variant of the KECCAK Message Authentication Code (KMAC)
-     * algorithm based on SHA-3 with customizable output length.
-     * KMACXOF256 allows generating variable-length hash outputs.
+     * Computes the KMACXOF256 hash, a variant of the KECCAK Message Authentication Code (KMAC) algorithm.
+     * KMACXOF256 provides variable-length output and is built from cSHAKE256.
      *
-     * @param K The key bit string of any length.
-     * @param X The main input bit string of any length.
+     * @param K The key bit string of any length, including zero.
+     * @param X The main input bit string. It may be of any length, including zero.
      * @param L The requested output length in bits.
-     * @param S The optional customization bit string of any length. If no customization is desired, S should be an empty byte array.
+     * @param S The optional customization bit string of any length, including zero. If no customization is desired, S is set to the empty string.
      * @return The computed KMACXOF256 hash as a byte array.
-     * @throws IllegalArgumentException if the input lengths are invalid.
+     * @throws IllegalArgumentException if the length of K, L, or S exceeds the specified limit or if L is negative.
      */
     public static byte[] kmacxof256(byte[] K, byte[] X, int L, byte[] S) {
-        byte[] N = new byte[]{(byte) 0b11010010, (byte) 0b10110010, (byte) 0b10000010, (byte) 0b11000010}; // Name for KMAC function
-        byte[] newX;
-        if (K.length < 2 || L >= Math.pow(2, 2040) || S.length >= Math.pow(2, 2040)) {
-            throw new IllegalArgumentException("Invalid input length");
+        // Check validity conditions
+        if (K.length >= Math.pow(2, 2040) || L < 0 || L >= Math.pow(2, 2040) || S.length >= Math.pow(2, 2040)) {
+            throw new IllegalArgumentException("Validity conditions not met");
         }
 
-        // Pad the key and concatenate with input and right-encoded output length
-        if (K.length >= 32) {
-            newX = bytepad(encode_string(K), 136); // Using 136-byte padding for KECCAK[512]
-        } else {
-            newX = bytepad(encode_string(K), 168); // Using 168-byte padding for KECCAK[256]
+        // Pad the key and concatenate with input X and right-encoded length L
+        byte[] paddedKey = bytepad(encode_string(K), 136);
+        byte[] encodedLength = right_encode(BigInteger.valueOf(L));
+        byte[] concatenatedData = new byte[paddedKey.length + X.length + encodedLength.length];
+
+        // Copy paddedKey to concatenatedData
+        for (int i = 0; i < paddedKey.length; i++) {
+            concatenatedData[i] = paddedKey[i];
         }
 
-        // Create a new array to store the concatenated data
-        byte[] concatenatedData = new byte[newX.length + X.length + right_encode(BigInteger.valueOf(L)).length];
-
-        // Copy the padded key into the concatenatedData array
-        for (int i = 0; i < newX.length; i++) {
-            concatenatedData[i] = newX[i];
-        }
-
-        // Copy the input X into the concatenatedData array
+        // Copy X to concatenatedData
+        int index = paddedKey.length;
         for (int i = 0; i < X.length; i++) {
-            concatenatedData[newX.length + i] = X[i];
+            concatenatedData[index++] = X[i];
         }
 
-        // Copy the right-encoded output length into the concatenatedData array
-        byte[] encodedL = right_encode(BigInteger.valueOf(L));
-        for (int i = 0; i < encodedL.length; i++) {
-            concatenatedData[newX.length + X.length + i] = encodedL[i];
+        // Copy encodedLength to concatenatedData
+        for (int i = 0; i < encodedLength.length; i++) {
+            concatenatedData[index++] = encodedLength[i];
         }
 
         // Call cSHAKE256 with the prepared input
-        return cSHAKE256(concatenatedData, L, N, S);
+        return cSHAKE256(concatenatedData, L, "KMAC".getBytes(), S);
     }
+
 
     /**
      * Encode an integer as a byte array in a way that can be parsed from the end of the string.
