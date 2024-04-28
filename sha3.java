@@ -355,6 +355,54 @@ public class sha3 {
             return sponge(c, input, L, (byte) 0x04); // Use 0x04 for cShake customization
         }
     }
+    /**
+     * Compute KMACXOF256 hash, which is a variant of the KECCAK Message Authentication Code (KMAC)
+     * algorithm based on SHA-3 with customizable output length.
+     * KMACXOF256 allows generating variable-length hash outputs.
+     *
+     * @param K The key bit string of any length.
+     * @param X The main input bit string of any length.
+     * @param L The requested output length in bits.
+     * @param S The optional customization bit string of any length. If no customization is desired, S should be an empty byte array.
+     * @return The computed KMACXOF256 hash as a byte array.
+     * @throws IllegalArgumentException if the input lengths are invalid.
+     */
+    public static byte[] kmacxof256(byte[] K, byte[] X, int L, byte[] S) {
+        byte[] N = new byte[]{(byte) 0b11010010, (byte) 0b10110010, (byte) 0b10000010, (byte) 0b11000010}; // Name for KMAC function
+        byte[] newX;
+        if (K.length < 2 || L >= Math.pow(2, 2040) || S.length >= Math.pow(2, 2040)) {
+            throw new IllegalArgumentException("Invalid input length");
+        }
+
+        // Pad the key and concatenate with input and right-encoded output length
+        if (K.length >= 32) {
+            newX = bytepad(encode_string(K), 136); // Using 136-byte padding for KECCAK[512]
+        } else {
+            newX = bytepad(encode_string(K), 168); // Using 168-byte padding for KECCAK[256]
+        }
+
+        // Create a new array to store the concatenated data
+        byte[] concatenatedData = new byte[newX.length + X.length + right_encode(BigInteger.valueOf(L)).length];
+
+        // Copy the padded key into the concatenatedData array
+        for (int i = 0; i < newX.length; i++) {
+            concatenatedData[i] = newX[i];
+        }
+
+        // Copy the input X into the concatenatedData array
+        for (int i = 0; i < X.length; i++) {
+            concatenatedData[newX.length + i] = X[i];
+        }
+
+        // Copy the right-encoded output length into the concatenatedData array
+        byte[] encodedL = right_encode(BigInteger.valueOf(L));
+        for (int i = 0; i < encodedL.length; i++) {
+            concatenatedData[newX.length + X.length + i] = encodedL[i];
+        }
+
+        // Call cSHAKE256 with the prepared input
+        return cSHAKE256(concatenatedData, L, N, S);
+    }
 
     /**
      * Encode an integer as a byte array in a way that can be parsed from the end of the string.
