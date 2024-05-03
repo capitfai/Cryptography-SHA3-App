@@ -54,39 +54,6 @@ public class Main {
             System.out.println("Error reading input file.");
         }
 
-
-//        switch (command) {
-//            case "hash" -> {
-//                if (args.length != 2) {
-//                    System.out.println("Usage: Main hash function fail.");
-//                    return;
-//                }
-//                computeHash(args[1]);
-//            }
-//            case "tag" -> {
-//                if (args.length != 3) {
-//                    System.out.println("Usage: Main tag function fail.");
-//                    return;
-//                }
-//                computeTag(args[1], args[2]);
-//            }
-//            case "encrypt" -> {
-//                if (args.length != 3) {
-//                    System.out.println("Usage: Main encrypt file failed.");
-//                    return;
-//                }
-//                encrypt(args[1], args[2]);
-//            }
-//            case "decrypt" -> {
-//                if (args.length != 3) {
-//                    System.out.println("Usage: Main decrypt function failed.");
-//                    return;
-//                }
-//                decrypt(args[1], args[2]);
-//            }
-//            default -> System.out.println("Invalid command.");
-//        }
-
     }
 
     private static String bytesToHex(byte[] theBytes) {
@@ -98,7 +65,6 @@ public class Main {
     }
 
     private static byte[] computeHash(byte[] theInputBytes) {
-        // TODO: call hash function
         return null;
     }
 
@@ -114,71 +80,6 @@ public class Main {
         return null;
     }
 
-    // private file utility class
 
-//    private static class FileUtility {
-//
-//        public static byte[] readFile(String theFileName) {
-//            try {
-//                FileInputStream fis = new FileInputStream(theFileName);
-//                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-//                byte[] buffer = new byte[1024];
-//                int bytesRead;
-//                while ((bytesRead = fis.read(buffer)) != -1) {
-//                    bos.write(buffer, 0, bytesRead);
-//                }
-//                fis.close();
-//                return bos.toByteArray();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//                return new byte[0];
-//            }
-//        }
-//
-//        public static void writeFile(String theFileName, byte[] theData) {
-//            try {
-//                FileOutputStream fos = new FileOutputStream(theFileName);
-//                fos.write(theData);
-//                fos.close();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//        public static void writeEncryptedFile(String theFileName, byte[][] theData) {
-//            try {
-//                FileOutputStream fos = new FileOutputStream(theFileName);
-//                for (byte[] array: theData) {
-//                    fos.write(array);
-//                }
-//                fos.close();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//        public static byte[][] readEncryptedFile(String theFileName) {
-//            try {
-//                FileInputStream fis = new FileInputStream(theFileName);
-//                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-//                byte[] buffer = new byte[1024];
-//                int bytesRead;
-//                while ((bytesRead = fis.read(buffer)) != -1) {
-//                    bos.write(buffer, 0, bytesRead);
-//                }
-//                fis.close();
-//                byte[] data = bos.toByteArray();
-//                int splitIndex = data.length / 3;
-//                byte[][] result = new byte[3][];
-//                result[0] = Arrays.copyOfRange(data, 0, splitIndex);
-//                result[1] = Arrays.copyOfRange(data, splitIndex, 2 * splitIndex);
-//                result[2] = Arrays.copyOfRange(data, 2 * splitIndex, data.length);
-//                return result;
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//                return new byte[0][];
-//            }
-//        }
-//    }
 
 }
