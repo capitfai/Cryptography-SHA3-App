@@ -23,17 +23,17 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        if (args.length != 3) {
-            System.err.println("Usage: java Main <input_file> <output file> <password>");
+        if (args.length < 3) {
+            System.out.println("Usage: java Main <input_file> <output file> <password>");
             System.exit(1);
         }
 
         String inputFile = args[0];
         String outputFile = args[1];
         String passphrase = args[2];
-
-        final Path output = Paths.get(outputFile);
         handleUserInput(inputFile, outputFile, passphrase);
+        final Path output = Paths.get(outputFile);
+
 
     }
 
