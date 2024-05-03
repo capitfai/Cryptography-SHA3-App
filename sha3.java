@@ -302,16 +302,14 @@ public class sha3 {
     public static byte[] cSHAKE256(byte[] X, int L, String N, String S) {
         if (N.length() == 0 && S.length() == 0)
             return SHAKE256(X, L);
-//        byte[] encodedN = encode_string(N.getBytes(StandardCharsets.US_ASCII));
-//        byte[] encodedS = encode_string(S);
-        byte[] encodedN = encode_string(N);
-        byte[] encodedS = encode_string(S);
-        byte[] combineNS = new byte[encodedN.length + encodedS.length];
-        for (int i = 0; i < encodedN.length; i++) {
-            combineNS[i] = encodedN[i];
+        byte[] encodedNToBytes = encode_string(N);
+        byte[] encodedSToBytes = encode_string(S);
+        byte[] combineNS = new byte[encodedNToBytes.length + encodedSToBytes.length];
+        for (int i = 0; i < encodedNToBytes.length; i++) {
+            combineNS[i] = encodedNToBytes[i];
         }
-        for (int i = 0; i < encodedS.length; i++) {
-            combineNS[encodedN.length + i] = encodedS[i];
+        for (int i = 0; i < encodedSToBytes.length; i++) {
+            combineNS[encodedNToBytes.length + i] = encodedSToBytes[i];
         }
         byte[] paddedNS = bytepad(combineNS, 136);
         byte[] res = new byte[paddedNS.length + X.length];
@@ -324,11 +322,11 @@ public class sha3 {
         return sponge(res, L, (byte) 0x04);
     }
 public static byte[] SHAKE256(byte[] M, int d) {
-    byte[] res = new byte[M.length];
+    byte[]  newArr= new byte[M.length];
     for (int i = 0; i < M.length; i++) {
-        res[i] = M[i];
+        newArr[i] = M[i];
     }
-    return sponge(res, d, (byte) 0x1F);
+    return sponge(newArr, d, (byte) 0x1F);
 }
 
     /**
@@ -340,13 +338,13 @@ public static byte[] SHAKE256(byte[] M, int d) {
      * @return          The resulting output bytes.
      */
     private static byte[] sponge(byte[] data, int d, byte xorValue) {
-        int byteLength = d / 8; // Calculate the length of the output in bytes
-        byte[] output = new byte[byteLength]; // Initialize the output byte array
-        sha3_ctx_t sha3 = new sha3_ctx_t(); // Create an instance of sha3_ctx_t struct
+        sha3_ctx_t sha3 = new sha3_ctx_t(); // Create an instance of sha3_ctx_t static class
+        int outLength = d / 8; // Calculate the length of the output in bytes
+        byte[] out = new byte[outLength]; // Initialize the output byte array
         sha3_init(sha3, 32); // Initialize the SHA-3 context with a hash length of 32 bytes
         absorb(sha3, data); // Absorb the input data into the SHA-3 context
-        squeeze(sha3, output, xorValue, byteLength); // Squeeze the output bytes from the SHA-3 context
-        return output; // Return the resulting output byte array
+        squeeze(sha3, out, xorValue, outLength); // Squeeze the output bytes from the SHA-3 context
+        return out; // Return the resulting output byte array
     }
 
     /**
@@ -487,33 +485,20 @@ public static byte[] SHAKE256(byte[] M, int d) {
      * @return The encoded bit string as a byte array.
      */
     public static byte[] encode_string(String s) {
-//        // Calculate the bit length of the input string
-//        BigInteger bitLength = BigInteger.valueOf(s.length * 8);
-//
-//        // Encode the bit length using left_encode
-//        byte[] len = left_encode(bitLength);
-//
-//        // Create a byte array to store the encoded string
-//        byte[] encoded = new byte[len.length + s.length];
-//
-//        // Copy bytes from len to encoded
-//        for (int i = 0; i < len.length; i++) {
-//            encoded[i] = len[i];
-//        }
-//
-//        // Copy bytes from s to encoded
-//        for (int i = 0; i < s.length; i++) {
-//            encoded[len.length + i] = s[i];
-//        }
-//
-//        return encoded;
+
         BigInteger bitLength = BigInteger.valueOf(s.length() * 8);
         byte[] lenSBytes = left_encode(bitLength); // Convert length of S to bytes (left encoded)
         byte[] SBytes = s.getBytes(StandardCharsets.UTF_8); // Get bytes of S
         byte[] result = new byte[lenSBytes.length + SBytes.length]; // Concatenate length and S
-        System.arraycopy(lenSBytes, 0, result, 0, lenSBytes.length);
-        System.arraycopy(SBytes, 0, result, lenSBytes.length, SBytes.length);
+
+        // Manual loop for copying bytes
+        for (int i = 0; i < lenSBytes.length; i++) {
+            result[i] = lenSBytes[i];
+        }
+        for (int i = 0; i < SBytes.length; i++) {
+            result[lenSBytes.length + i] = SBytes[i];
+        }
+
         return result;
     }
-
 }
