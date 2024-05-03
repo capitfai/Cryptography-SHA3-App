@@ -323,12 +323,14 @@ public class sha3 {
         }
         return sponge(res, L, (byte) 0x04);
     }
-
-    public static byte[] SHAKE256(byte[] M, int d) {
-        byte[] res = new byte[M.length];
-        System.arraycopy(M, 0, res, 0, M.length);
-        return sponge(res, d, (byte) 0x1F);
+public static byte[] SHAKE256(byte[] M, int d) {
+    byte[] res = new byte[M.length];
+    for (int i = 0; i < M.length; i++) {
+        res[i] = M[i];
     }
+    return sponge(res, d, (byte) 0x1F);
+}
+
     /**
      * Perform the sponge function using the SHA-3 algorithm.
      *
