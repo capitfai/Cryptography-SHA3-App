@@ -6,15 +6,12 @@
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -25,10 +22,24 @@ import java.util.Scanner;
  */
 public class Main {
 
+    /**
+     * Scanner to read user input.
+     */
     private static final Scanner scanner = new Scanner(System.in);
 
+    /**
+     * Container for keeping the concatenated zct bytes for encrypt/decrypt.
+     */
+    public static ArrayList<byte[]> zct;
+
+    /**
+     * Driver method that kicks off program and takes in string arguments for files.
+     * @param args String arguments.
+     * @throws IOException For file reading.
+     */
     public static void main(String[] args) throws IOException {
 
+        zct = new ArrayList<>();
         if (args.length < 3) {
             System.out.println("Usage: java Main <input_file_path> <output_file_path> <password_path>");
             System.exit(1);
@@ -44,6 +55,12 @@ public class Main {
 
     }
 
+    /**
+     * Reads the file input name and parses through the text.
+     * @param theInputName Name of file name.
+     * @return Concatenated String of what is in the file.
+     * @throws IOException For reading files.
+     */
     private static String readInputFile(String theInputName) throws IOException {
         BufferedReader br = new BufferedReader(new FileReader(theInputName));
         StringBuilder sb = new StringBuilder();
@@ -55,97 +72,114 @@ public class Main {
         return sb.toString();
     }
 
+    /**
+     * Writes to the output file specified in the parameter.
+     * @param TheString The given string we want to write.
+     * @param theFileName The name of file output.
+     * @throws IOException For reading files.
+     */
     private static void writeStringToFile(String TheString, String theFileName) throws IOException {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(theFileName))) {
             bw.write(TheString);
         }
     }
 
-    private static void writeBytesToFile(byte[] data, String TheFileName) throws IOException {
-        try (FileOutputStream fos = new FileOutputStream(TheFileName)) {
-            fos.write(data);
-        }
-    }
-
+    /**
+     * After starting the program, this is the central method that will keep prompting for input and call the
+     * appropriate methods depending on the method specified.
+     * @param theInputFile The contents of the input file.
+     * @param TheOutputName The name of the output file.
+     * @param thePassPhrase The name of the passphrase file.
+     * @throws IOException For reading files.
+     */
     public static void handleUserInput(String theInputFile, String TheOutputName,
                                        String thePassPhrase) throws IOException {
-        byte[] input = Files.readAllBytes(Paths.get(theInputFile));
+        byte[] input = theInputFile.getBytes();
         byte[] pw = thePassPhrase.getBytes();
+        System.out.println("Welcome to SHA3 App! \n");
 
-        System.out.println("Welcome to SHA3 App! Please select the method you would like to use "
-            + "by typing the number of the option below: \n");
-        System.out.println("1. Compute a hash of a file.");
-        System.out.println("2. Compute a hash of a given text.");
-        System.out.println("3. Compute an authentication tag of a file.");
-        System.out.println("4. Compute an authentication tag of a given text.");
-        System.out.println("5. Encrypt a file.");
-        System.out.println("6. Encrypt a given text.");
-        System.out.println("7. Decrypt a file.");
-        System.out.println("8. Decrypt a given text.");
-        System.out.println("9. Exit.");
-
-        int choice = scanner.nextInt();
-
-        while (choice < 1 && choice > 7) {
-            System.out.println("Choice is not listed. Please select a method you would like to use: \n");
+        int choice;
+        while (true) {
+            System.out.println("Please select the method you would like to use by typing the number of the option below: \n" );
+            System.out.println("1. Compute a hash of a file.");
+            System.out.println("2. Compute a hash of a given text.");
+            System.out.println("3. Compute an authentication tag of a file.");
+            System.out.println("4. Compute an authentication tag of a given text.");
+            System.out.println("5. Encrypt a file.");
+            System.out.println("6. Encrypt a given text.");
+            System.out.println("7. Decrypt a file.");
+            System.out.println("8. Exit.");
             choice = scanner.nextInt();
-        }
-
-        scanner.nextLine();
-
-        switch (choice) {
-            case 1 -> {
-                byte[] hashResult = computeHash(input);         // stores result into separate byte array
-                if (hashResult != null) {
-                    printByteArray(hashResult);                 // prints to console
+            scanner.nextLine();
+            switch (choice) {
+                case 1 -> {
+                    byte[] hashResult = computeHash(input);         // stores result into separate byte array
+                    if (hashResult != null) {
+                        String str = bytesToHex(hashResult);
+                        System.out.println(str + "\n");                 // prints to console
+                        writeStringToFile(str, TheOutputName);
+                    }
                 }
-                writeBytesToFile(hashResult, TheOutputName);
-            }
-            case 2 -> {
-                byte[] hashInput = handleInputToBytes();
-                byte[] hashResult = computeHash(hashInput);     // stores result into separate byte array
-                if (hashResult != null) {
-                    printByteArray(hashInput);                  // prints to console
+                case 2 -> {
+                    System.out.println("Please enter the input you want to hash: \n");
+                    byte[] hashInput = handleInputToBytes();
+                    byte[] hashResult = computeHash(hashInput);     // stores result into separate byte array
+                    if (hashResult != null) {
+                        String str = bytesToHex(hashResult);
+                        System.out.println(str);                 // prints to console
+                        writeStringToFile(str, TheOutputName);
+                    }
                 }
-                writeBytesToFile(hashInput, TheOutputName);
-            }
-            case 3 -> {
-                byte[] tag = computeTag(input, pw);
-                if (tag != null) {
-                    printByteArray(tag);
+                case 3 -> {
+                    byte[] tag = computeTag(input, pw);
+                    if (tag != null) {
+                        String str = bytesToHex(tag);
+                        System.out.println(str);                 // prints to console
+                        writeStringToFile(str, TheOutputName);
+                    }
                 }
-                writeBytesToFile(tag, TheOutputName);
-            }
-            case 4 -> {
-                byte[] tagInput = handleInputToBytes();
-                byte[] pwInput = handleInputToBytes();
-                byte[] tag = computeTag(tagInput, pwInput);
-                if (tag != null) {
-                    printByteArray(tag);
+                case 4 -> {
+                    System.out.println("Please enter the input you want to tag: \n");
+                    byte[] tagInput = handleInputToBytes();
+                    System.out.println("Please enter the password: \n");
+                    byte[] pwInput = handleInputToBytes();
+                    byte[] tag = computeTag(tagInput, pwInput);
+                    if (tag != null) {
+                        String str = bytesToHex(tag);
+                        System.out.println(str);                 // prints to console
+                        writeStringToFile(str, TheOutputName);
+                    }
                 }
-                writeBytesToFile(tag, TheOutputName);
-            }
-            case 5 -> {
-                byte[] encrypted = encrypt(input, pw);
-                printByteArray(encrypted);                      // prints to console
-                writeBytesToFile(encrypted, TheOutputName);
-            }
-            case 6 -> {
-                byte[] encryptInput = handleInputToBytes();
-                byte[] selected_pw = handleInputToBytes();
-                byte[] encrypted = encrypt(encryptInput, selected_pw);
-                printByteArray(encrypted);
-                writeBytesToFile(encrypted, TheOutputName);
-            }
-            case 7 -> decrypt(input, pw, TheOutputName);
-            case 8 -> {
-                System.out.println("Exiting SHA3 App.");
-                System.exit(0);
+                case 5 -> {
+                    byte[] encrypted = encrypt(input, pw);
+                    String str = bytesToHex(encrypted);
+                    System.out.println(str);                 // prints to console
+                    writeStringToFile(str, TheOutputName);
+                }
+                case 6 -> {
+                    System.out.println("Please enter the input you want to encrypt: \n");
+                    byte[] encryptInput = handleInputToBytes();
+                    System.out.println("Please enter the passphrase you want to use: \n");
+                    byte[] selected_pw = handleInputToBytes();
+                    byte[] encrypted = encrypt(encryptInput, selected_pw);
+                    String str = bytesToHex(encrypted);
+                    System.out.println(str);                 // prints to console
+                    writeStringToFile(str, TheOutputName);
+                }
+                case 7 -> decrypt(pw, TheOutputName);
+                case 8 -> {
+                    System.out.println("Exiting SHA3 App.");
+                    System.exit(0);
+                }
+                default -> System.out.println("Choice is not listed. Please select a method you would like to use: \n");
             }
         }
     }
 
-    // Supporting method that ensures input is accurately typed.
+    /**
+     * Ensures that user input is valid and converts to a byte array for further processing.
+     * @return byte array for methods to use easier.
+     */
     public static byte[] handleInputToBytes() {
         byte[] validInput;
         String userInput = scanner.nextLine();
@@ -158,12 +192,21 @@ public class Main {
         return validInput;
     }
 
+    /**
+     * Prints the byte array to console (debugging).
+     * @param TheArray Byte array to be printed.
+     */
     public static void printByteArray(byte[] TheArray) {
         for (byte b : TheArray) {
             System.out.print(b + " ");
         }
     }
 
+    /**
+     * Uses SecureRandom to randomize bits of a given size.
+     * @param theNumBits Size requested of a randomized byte array.
+     * @return randomized byte array.
+     */
     public static byte[] randomizeBits(int theNumBits) {
         SecureRandom secureRandom = new SecureRandom();
         byte[] randomBytes = new byte[theNumBits / 8];
@@ -171,6 +214,12 @@ public class Main {
         return randomBytes;
     }
 
+    /**
+     * XORs the two arrays' bits.
+     * @param TheArrayOne First array to XOR.
+     * @param TheArrayTwo Second array to XOR.
+     * @return result of the two arrays after XOR operation.
+     */
     public static byte[] XOR(byte[] TheArrayOne, byte[] TheArrayTwo) {
         byte[] result = new byte[Math.min(TheArrayOne.length, TheArrayTwo.length)];
         for (int i = 0; i < result.length; i++) {
@@ -179,23 +228,44 @@ public class Main {
         return result;
     }
 
+    /**
+     * Converts the byte arrays to hex (for display and writing to file).
+     * @param theBytes The byte array.
+     * @return String of hex converted from bytes.
+     */
     private static String bytesToHex(byte[] theBytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : theBytes) {
-            sb.append(String.format("%02x", b));
+            sb.append(String.format("%02x ", b));
         }
-        return sb.toString();
+        return sb.toString().trim().toUpperCase();
     }
 
+    /**
+     * Calls the KMACXOF256 function to compute hash.
+     * @param m Data input in bytes.
+     * @return byte array.
+     */
     private static byte[] computeHash(byte[] m) {
         return sha3.KMACXOF256("".getBytes(), m, 512, "D".getBytes());
     }
 
+    /**
+     * Calls the KMACXOF256 function to compute tag.
+     * @param m Data input in bytes.
+     * @param pw Password in bytes.
+     * @return byte array.
+     */
     private static byte[] computeTag(byte[] m, byte[] pw) {
         return sha3.KMACXOF256(pw, m, 512, "T".getBytes());
     }
 
-    // Takes input and passphrase, encrypts,
+    /**
+     * Encrypts the given input using the passphrase under SHA3 algorithm.
+     * @param m data input in bytes.
+     * @param pw passphrase in bytes.
+     * @return byte array of the encrypted result.
+     */
     private static byte[] encrypt(byte[] m, byte[] pw) {
         byte[] z = randomizeBits(512);
 
@@ -222,40 +292,53 @@ public class Main {
         System.arraycopy(z, 0, result, 0, z.length);
         System.arraycopy(c, 0, result, z.length, c.length);
         System.arraycopy(t, 0, result, z.length + c.length, t.length);
+        zct.add(z);
+        zct.add(c);
+        zct.add(t);
 
         return result;
     }
 
-    private static void decrypt(byte[] zct, byte[] pw, String TheOutputFile) throws IOException {
-        byte[] z = Arrays.copyOfRange(zct, 0, 64);
-        byte[] c = Arrays.copyOfRange(zct, 64, zct.length - 64); // middle???
-        byte[] t = Arrays.copyOfRange(zct, zct.length - 64, zct.length);
-
-        byte[] concat = new byte[z.length + pw.length];
-        System.arraycopy(z, 0, concat, 0, z.length);
-        System.arraycopy(pw, 0, concat, pw.length, pw.length);
-
-        byte[] ke_ka = sha3.KMACXOF256(concat, "".getBytes(), 1024, "S".getBytes());
-        byte[] ke = new byte[ke_ka.length / 2];
-        byte[] ka = new byte[ke_ka.length / 2];
-        System.arraycopy(ke_ka, 0, ke, 0, ke.length);
-        System.arraycopy(ke_ka, ke.length, ka, 0, ka.length);
-
-        byte[] mKey = sha3.KMACXOF256(ke, "".getBytes(), c.length * 8, "SKE".getBytes());
-
-        byte[] m = XOR(mKey, c);
-
-        byte[] t_prime = sha3.KMACXOF256(ka, m, 512, "SKA".getBytes());
-
-        if (Arrays.equals(t, t_prime)) {
-            System.out.println("Decryption Successful!");
-            String str = new String(m, StandardCharsets.UTF_8);
-            System.out.println(str);
-            writeStringToFile(str, TheOutputFile);
+    /**
+     * Decrypts given the passphrase and encrypted bytes.
+     * @param pw passphrase in bytes.
+     * @param TheOutputFile name of output file.
+     * @throws IOException For reading files.
+     */
+    private static void decrypt(byte[] pw, String TheOutputFile) throws IOException {
+        if (zct.isEmpty()) {
+            System.out.println("File has not yet been encrypted. Decryption cannot continue.");
         } else {
-            System.out.println("Decryption failed.");
-            printByteArray(t);
-            printByteArray(t_prime);
+            byte[] z = zct.get(0);
+            byte[] c = zct.get(1);
+            byte[] t = zct.get(2);
+
+            byte[] concat = new byte[z.length + pw.length];
+            System.arraycopy(z, 0, concat, 0, z.length);
+            System.arraycopy(pw, 0, concat, pw.length, pw.length);
+
+            byte[] ke_ka = sha3.KMACXOF256(concat, "".getBytes(), 1024, "S".getBytes());
+            byte[] ke = new byte[ke_ka.length / 2];
+            byte[] ka = new byte[ke_ka.length / 2];
+            System.arraycopy(ke_ka, 0, ke, 0, ke.length);
+            System.arraycopy(ke_ka, ke.length, ka, 0, ka.length);
+
+            byte[] mKey = sha3.KMACXOF256(ke, "".getBytes(), c.length * 8, "SKE".getBytes());
+
+            byte[] m = XOR(mKey, c);
+
+            byte[] t_prime = sha3.KMACXOF256(ka, m, 512, "SKA".getBytes());
+
+            if (Arrays.equals(t, t_prime)) {
+                System.out.println("Decryption Successful!");
+                String str = new String(m, StandardCharsets.UTF_8);
+                System.out.println(str);
+                writeStringToFile(str, TheOutputFile);
+            } else {
+                System.out.println("Decryption failed.");
+                printByteArray(t);
+                printByteArray(t_prime);
+            }
         }
     }
 
