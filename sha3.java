@@ -42,7 +42,7 @@ public class sha3 {
         return result;
     }
     final static int KECCAKF_ROUNDS = 24;
-    final static boolean BYTE_ORDER_LITTLE_ENDIAN = true;
+    final static boolean LITTLE_ENDIAN = true;
     // constants
     final static long[] KECCAKF_RNDC = { 0x0000000000000001L, 0x0000000000008082L, 0x800000000000808aL,
             0x8000000080008000L, 0x000000000000808bL, 0x0000000080000001L, 0x8000000080008081L, 0x8000000000008009L,
@@ -62,39 +62,32 @@ public class sha3 {
 
         int pt, rsiz, mdlen;
     };
-
-    // ROTL64 MACRO
     public static long ROTL64(long x, int y) {
         return (x << y) | (x >>> (64 - (y)));
     }
 
-    public static void sha3_keccakf(byte[] byteSt) {
-
-        long[] st = new long[25];
+    public static void sha3_keccakf(byte[] st) {
+        long[] bytes = new long[25];
         int index = 0;
-        for (int i = 0; i < st.length; i++) {
+        for (int i = 0; i < bytes.length; i++) {
             long value = 0;
             for (int j = 0; j < 8; j++) {
                 value <<= 8; // Shift the value to the left by 8 bits
-                value |= (byteSt[index++] & 0xFF); // Extract the byte and append it to the value
+                value |= (st[index++] & 0xFF); // Extract the byte and append it to the value
             }
-            st[i] = value; // Assign the constructed long value to the array
+            bytes[i] = value; // Assign the constructed long value to the array
         }
-
-
-
 
         // variables
         int i, j, r;
         long t;
         long[] bc = new long[5];
 
-        if (BYTE_ORDER_LITTLE_ENDIAN) {
+        if (LITTLE_ENDIAN) {
             byte[] v;
-            // endianess conversion. this is redundant on little-endian targets
             for (i = 0; i < 25; i++) {
-                v =longToBytes(st[i]);
-                st[i] = (((long) v[0]) & 0xFF) | ((((long) v[1]) & 0xFF) << 8) | ((((long) v[2]) & 0xFF) << 16)
+                v = longToBytes(bytes[i]);
+                bytes[i] = (((long) v[0]) & 0xFF) | ((((long) v[1]) & 0xFF) << 8) | ((((long) v[2]) & 0xFF) << 16)
                         | ((((long) v[3]) & 0xFF) << 24) | ((((long) v[4]) & 0xFF) << 32)
                         | ((((long) v[5]) & 0xFF) << 40) | ((((long) v[6]) & 0xFF) << 48)
                         | ((((long) v[7]) & 0xFF) << 56);
@@ -106,54 +99,52 @@ public class sha3 {
 
             // Theta
             for (i = 0; i < 5; i++)
-                bc[i] = st[i] ^ st[i + 5] ^ st[i + 10] ^ st[i + 15] ^ st[i + 20];
+                bc[i] = bytes[i] ^ bytes[i + 5] ^ bytes[i + 10] ^ bytes[i + 15] ^ bytes[i + 20];
 
             for (i = 0; i < 5; i++) {
                 t = bc[(i + 4) % 5] ^ ROTL64(bc[(i + 1) % 5], 1);
                 for (j = 0; j < 25; j += 5)
-                    st[j + i] ^= t;
+                    bytes[j + i] ^= t;
             }
 
-
-
             // Rho Pi
-            t = st[1];
+            t = bytes[1];
             for (i = 0; i < 24; i++) {
                 j = KECCAKF_PILN[i];
-                bc[0] = st[j];
-                st[j] = ROTL64(t, KECCAKF_ROTC[i]);
+                bc[0] = bytes[j];
+                bytes[j] = ROTL64(t, KECCAKF_ROTC[i]);
                 t = bc[0];
             }
 
             // Chi
             for (j = 0; j < 25; j += 5) {
                 for (i = 0; i < 5; i++)
-                    bc[i] = st[j + i];
+                    bc[i] = bytes[j + i];
                 for (i = 0; i < 5; i++)
-                    st[j + i] ^= ((~bc[(i + 1) % 5]) & bc[(i + 2) % 5]);
+                    bytes[j + i] ^= ((~bc[(i + 1) % 5]) & bc[(i + 2) % 5]);
             }
 
             // Iota
-            st[0] ^= KECCAKF_RNDC[r];
+            bytes[0] ^= KECCAKF_RNDC[r];
         }
 
-        if (BYTE_ORDER_LITTLE_ENDIAN) {
+        if (LITTLE_ENDIAN) {
             byte[] v;
-            // endianess conversion. this is redundant on little-endian targets
             for (i = 0; i < 25; i++) {
-                v = longToBytes(st[i]);
-                st[i] = (((long) v[0]) & 0xFF) | ((((long) v[1]) & 0xFF) << 8) | ((((long) v[2]) & 0xFF) << 16)
+                v = longToBytes(bytes[i]);
+                bytes[i] = (((long) v[0]) & 0xFF) | ((((long) v[1]) & 0xFF) << 8) | ((((long) v[2]) & 0xFF) << 16)
                         | ((((long) v[3]) & 0xFF) << 24) | ((((long) v[4]) & 0xFF) << 32)
                         | ((((long) v[5]) & 0xFF) << 40) | ((((long) v[6]) & 0xFF) << 48)
                         | ((((long) v[7]) & 0xFF) << 56);
             }
         }
 
-        int idx = 0;
-        for (int n = 0; n < st.length; n++) {
-            byte[] temp = longToBytes(st[n]);
-            System.arraycopy(temp, 0, byteSt, idx, 8);
-            idx += 8;
+        int counter = 0;
+        for (int n = 0; n < bytes.length; n++) {
+            byte[] newArr = longToBytes(bytes[n]);
+            for (int k = 0; k < 8; k++) {
+                st[counter++] = newArr[k];
+            }
         }
     }
 
