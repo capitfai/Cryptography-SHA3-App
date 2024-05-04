@@ -1,16 +1,18 @@
+/*
+ * David Hoang, Faith Capito
+ *
+ * TCSS487 - Spring 2024
+ */
+
 import java.math.BigInteger;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 
 /**
- *
- * SHA-3 Keccak Cryptogram Project
- *
- * Heavily inspired from Markku-Juhani O. Saarinen's C implementation: <https://github.com/mjosaarinen/tiny_sha3/blob/master/sha3.c>
- *
- * @authors Lindsay Ding, Alan Thompson, Christopher Henderson
- *
+ * Part 1: Our implementation pulls inspiration from:
+ * Markku-Juhani O. Saarinen
+ * <https://github.com/mjosaarinen/tiny_sha3/blob/master/sha3.c>
  */
 public class sha3 {
 
