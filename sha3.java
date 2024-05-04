@@ -139,10 +139,10 @@ public class sha3 {
         }
 
         int counter = 0;
-        for (int n = 0; n < bytes.length; n++) {
-            byte[] newArr = longToBytes(bytes[n]);
-            for (int k = 0; k < 8; k++) {
-                st[counter++] = newArr[k];
+        for (int b = 0; b < bytes.length; b++) {
+            byte[] newArr = longToBytes(bytes[b]);
+            for (int c = 0; c < 8; c++) {
+                st[counter++] = newArr[c];
             }
         }
     }
@@ -492,7 +492,7 @@ public static byte[] SHAKE256(byte[] M, int d) {
      */
     public static byte[] encode_string(String s) {
 
-        BigInteger bitLength = BigInteger.valueOf(s.length() * 8);
+        BigInteger bitLength = BigInteger.valueOf(s.length()*8);
         byte[] lenSBytes = left_encode(bitLength); // Convert length of S to bytes (left encoded)
         byte[] SBytes = s.getBytes(StandardCharsets.UTF_8); // Get bytes of S
         byte[] result = new byte[lenSBytes.length + SBytes.length]; // Concatenate length and S
