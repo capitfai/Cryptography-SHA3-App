@@ -40,6 +40,7 @@ public class Main {
     public static void handleUserInput(String theInputFile, String theOutputFile,
                                        String thePassPhrase) throws IOException {
         byte[] input = Files.readAllBytes(Paths.get(theInputFile));
+        byte[] pw = thePassPhrase.getBytes();
 
         System.out.println("Welcome to SHA3 App! Please select the method you would like to use "
             + "by typing the number of the option below: \n");
@@ -85,7 +86,7 @@ public class Main {
                 String passInput = scanner.nextLine();
                 encrypt(encryptInput, passInput);
             }
-            case 5 -> decrypt(input, thePassPhrase);
+            case 5 -> decrypt(input, pw);
         }
     }
 
@@ -115,6 +116,14 @@ public class Main {
         return randomBytes;
     }
 
+    public static byte[] XOR(byte[] TheArrayOne, byte[] TheArrayTwo) {
+        byte[] result = new byte[Math.min(TheArrayOne.length, TheArrayTwo.length)];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (byte) (TheArrayOne[i] ^ TheArrayTwo[i]);
+        }
+        return result;
+    }
+
     private static String bytesToHex(byte[] theBytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : theBytes) {
@@ -135,15 +144,23 @@ public class Main {
     private static byte[] encrypt(byte[] m, String thePassphrase) {
         byte[] z = randomizeBits(512);
         byte[] pw = thePassphrase.getBytes();
-//        byte[] zpw = new byte[];
-//        System.arraycopy(z, 0, );
-        byte[] concatKeys = sha3.KMACXOF256(z, "".getBytes(), 1024, "S".getBytes());
-        byte[] ke = new byte[512 / 8];
-        byte[] ka = new byte[512 / 8];
+
+        // concatenate z and pw
+        byte[] concat = new byte[z.length + pw.length];
+        System.arraycopy(z, 0, concat, 0, z.length);
+        System.arraycopy(pw, 0, concat, pw.length, pw.length);
+
+        // perform XOF function on z || pw
+        byte[] concatKeys = sha3.KMACXOF256(concat, "".getBytes(), 1024, "S".getBytes());
+        byte[] ke = new byte[concatKeys.length / 2];
+        byte[] ka = new byte[concatKeys.length / 2];
         System.arraycopy(concatKeys, 0, ke, 0, ke.length);
         System.arraycopy(concatKeys, ke.length, ka, 0, ka.length);
 
-        byte[] c = sha3.KMACXOF256(ke, m, m.length * 8, "SKE".getBytes());
+        byte[] cKey = sha3.KMACXOF256(ke, "".getBytes(), m.length * 8, "SKE".getBytes());
+
+        // c <- XOR'd bits
+        byte[] c = XOR(cKey, m);
 
         byte[] t = sha3.KMACXOF256(ka, m, 512, "SKA".getBytes());
 
@@ -155,7 +172,9 @@ public class Main {
         return result;
     }
 
-    private static byte[] decrypt(byte[] theData, String thePassphrase) {
+    private static byte[] decrypt(byte[] zct, byte[] pw) {
+//        byte[] ke = new byte[];
+//        byte[] ka = new byte[];
         return null;
     }
 
