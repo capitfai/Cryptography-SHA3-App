@@ -5,7 +5,6 @@
  */
 
 import java.math.BigInteger;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 
@@ -186,19 +185,33 @@ public class sha3 {
         c.pt = 0;
     }
 
+    /**
+     * Reads bytes from the internal state of a SHA-3 context and stores them in the output array.
+     * If the output length exceeds the internal buffer size, the SHA-3 permutation function is applied
+     * to update the internal state before continuing to read bytes.
+     *
+     * @param c   The SHA-3 context from which bytes are read.
+     * @param out The array to store the output bytes.
+     * @param len The number of bytes to read and store in the output array.
+     */
     private static void shake_out(sha3_ctx_t c, byte[] out, int len) {
         int i;
         int j = c.pt;
         for (i = 0; i < len; i++) {
+            // If the current position in the internal buffer exceeds its size,
+            // apply the SHA-3 permutation function to update the internal state
             if (j >= c.rsiz) {
                 sha3_keccakf(c.b);
                 j = 0;
             }
+            // Copy the byte from the internal buffer to the output array
             out[i] = c.b[j++];
         }
 
+        // Update the position pointer in the SHA-3 context
         c.pt = j;
     }
+
     /**
      * Computes KMACXOF256 (KMAC eXtendable-Output Function) as specified in the NIST SP 800-185 standard.
      *
@@ -214,15 +227,15 @@ public class sha3 {
         if (K.length >= Math.pow(2, 2040) || S.length >= Math.pow(2, 2040) || L < 0) {
             throw new IllegalArgumentException("Invalid input length or value.");
         }
-        byte[] paddedK = bytepad(encode_string(new String(K, StandardCharsets.UTF_8)), 136);
+        byte[] bytePaddedK = bytepad(encode_string(new String(K, StandardCharsets.UTF_8)), 136);
 
         // Concatenate paddedK and X into concatencodedXPadK
-        byte[] concatencodedXPadK = new byte[paddedK.length + X.length];
-        for (int i = 0; i < paddedK.length; i++) {
-            concatencodedXPadK[i] = paddedK[i];
+        byte[] concatencodedXPadK = new byte[bytePaddedK.length + X.length];
+        for (int i = 0; i < bytePaddedK.length; i++) {
+            concatencodedXPadK[i] = bytePaddedK[i];
         }
         for (int i = 0; i < X.length; i++) {
-            concatencodedXPadK[paddedK.length + i] = X[i];
+            concatencodedXPadK[bytePaddedK.length + i] = X[i];
         }
 
         // Compute right encoding of L
@@ -257,15 +270,15 @@ public class sha3 {
         if (K.length >= Math.pow(2, 2040) || S.length >= Math.pow(2, 2040) || L < 0) {
             throw new IllegalArgumentException("Invalid input length or value.");
         }
-        byte[] paddedK = bytepad(encode_string(new String(K, StandardCharsets.UTF_8)), 136);
+        byte[] bytePaddedK= bytepad(encode_string(new String(K, StandardCharsets.UTF_8)), 136);
 
         // Concatenate paddedK and X into concatencodedXPadK
-        byte[] concatencodedXPadK = new byte[paddedK.length + X.length];
-        for (int i = 0; i < paddedK.length; i++) {
-            concatencodedXPadK[i] = paddedK[i];
+        byte[] concatencodedXPadK = new byte[bytePaddedK.length + X.length];
+        for (int i = 0; i < bytePaddedK.length; i++) {
+            concatencodedXPadK[i] = bytePaddedK[i];
         }
         for (int i = 0; i < X.length; i++) {
-            concatencodedXPadK[paddedK.length + i] = X[i];
+            concatencodedXPadK[bytePaddedK.length + i] = X[i];
         }
 
         // Compute right encoding of L
@@ -297,20 +310,20 @@ public class sha3 {
             return SHAKE256(X, L);
         byte[] encodedNToBytes = encode_string(N);
         byte[] encodedSToBytes = encode_string(S);
-        byte[] combineNS = new byte[encodedNToBytes.length + encodedSToBytes.length];
+        byte[] NS = new byte[encodedNToBytes.length + encodedSToBytes.length];
         for (int i = 0; i < encodedNToBytes.length; i++) {
-            combineNS[i] = encodedNToBytes[i];
+            NS[i] = encodedNToBytes[i];
         }
         for (int i = 0; i < encodedSToBytes.length; i++) {
-            combineNS[encodedNToBytes.length + i] = encodedSToBytes[i];
+            NS[encodedNToBytes.length + i] = encodedSToBytes[i];
         }
-        byte[] paddedNS = bytepad(combineNS, 136);
-        byte[] res = new byte[paddedNS.length + X.length];
-        for (int i = 0; i < paddedNS.length; i++) {
-            res[i] = paddedNS[i];
+        byte[] bytepadNS = bytepad(NS, 136);
+        byte[] res = new byte[bytepadNS.length + X.length];
+        for (int i = 0; i < bytepadNS.length; i++) {
+            res[i] = bytepadNS[i];
         }
         for (int i = 0; i < X.length; i++) {
-            res[paddedNS.length + i] = X[i];
+            res[bytepadNS.length + i] = X[i];
         }
         return sponge(res, L, (byte) 0x04);
     }
