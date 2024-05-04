@@ -30,22 +30,22 @@ public class Main {
     public static void main(String[] args) throws IOException {
 
         if (args.length < 3) {
-            System.out.println("Usage: java Main <input_file> <output file> <password>");
+            System.out.println("Usage: java Main <input_file_path> <output_file_path> <password_path>");
             System.exit(1);
         }
 
-        String inputPath = args[0];
-        String outputPath = args[1];
+        String inputName = args[0];
+        String outputName = args[1];
         String passphrase = args[2];
 
-        String input = readInputFile(inputPath);
+        String input = readInputFile(inputName);
         String pw = readInputFile(passphrase);
-        handleUserInput(input, outputPath, pw);
+        handleUserInput(input, outputName, pw);
 
     }
 
-    private static String readInputFile(String TheInputPath) throws IOException {
-        BufferedReader br = new BufferedReader(new FileReader(TheInputPath));
+    private static String readInputFile(String theInputName) throws IOException {
+        BufferedReader br = new BufferedReader(new FileReader(theInputName));
         StringBuilder sb = new StringBuilder();
         String line;
         while ((line = br.readLine()) != null) {
@@ -55,19 +55,19 @@ public class Main {
         return sb.toString();
     }
 
-    private static void writeStringToFile(String TheString, String TheFilePath) throws IOException {
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(TheFilePath))) {
+    private static void writeStringToFile(String TheString, String theFileName) throws IOException {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(theFileName))) {
             bw.write(TheString);
         }
     }
 
-    private static void writeBytesToFile(byte[] data, String TheFilePath) throws IOException {
-        try (FileOutputStream fos = new FileOutputStream(TheFilePath)) {
+    private static void writeBytesToFile(byte[] data, String TheFileName) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(TheFileName)) {
             fos.write(data);
         }
     }
 
-    public static void handleUserInput(String theInputFile, String theOutputPath,
+    public static void handleUserInput(String theInputFile, String TheOutputName,
                                        String thePassPhrase) throws IOException {
         byte[] input = Files.readAllBytes(Paths.get(theInputFile));
         byte[] pw = thePassPhrase.getBytes();
@@ -99,7 +99,7 @@ public class Main {
                 if (hashResult != null) {
                     printByteArray(hashResult);                 // prints to console
                 }
-                writeBytesToFile(hashResult, theOutputPath);
+                writeBytesToFile(hashResult, TheOutputName);
             }
             case 2 -> {
                 byte[] hashInput = handleInputToBytes();
@@ -107,14 +107,14 @@ public class Main {
                 if (hashResult != null) {
                     printByteArray(hashInput);                  // prints to console
                 }
-                writeBytesToFile(hashInput, theOutputPath);
+                writeBytesToFile(hashInput, TheOutputName);
             }
             case 3 -> {
                 byte[] tag = computeTag(input, pw);
                 if (tag != null) {
                     printByteArray(tag);
                 }
-                writeBytesToFile(tag, theOutputPath);
+                writeBytesToFile(tag, TheOutputName);
             }
             case 4 -> {
                 byte[] tagInput = handleInputToBytes();
@@ -123,21 +123,21 @@ public class Main {
                 if (tag != null) {
                     printByteArray(tag);
                 }
-                writeBytesToFile(tag, theOutputPath);
+                writeBytesToFile(tag, TheOutputName);
             }
             case 5 -> {
                 byte[] encrypted = encrypt(input, pw);
                 printByteArray(encrypted);                      // prints to console
-                writeBytesToFile(encrypted, theOutputPath);
+                writeBytesToFile(encrypted, TheOutputName);
             }
             case 6 -> {
                 byte[] encryptInput = handleInputToBytes();
                 byte[] selected_pw = handleInputToBytes();
                 byte[] encrypted = encrypt(encryptInput, selected_pw);
                 printByteArray(encrypted);
-                writeBytesToFile(encrypted, theOutputPath);
+                writeBytesToFile(encrypted, TheOutputName);
             }
-            case 7 -> decrypt(input, pw, theOutputPath);
+            case 7 -> decrypt(input, pw, TheOutputName);
             case 8 -> {
                 System.out.println("Exiting SHA3 App.");
                 System.exit(0);
