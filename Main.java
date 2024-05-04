@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
-import java.util.Random;
+import java.util.Arrays;
 import java.util.Scanner;
 
 /**
@@ -46,11 +46,13 @@ public class Main {
             + "by typing the number of the option below: \n");
         System.out.println("1. Compute a hash of a file.");
         System.out.println("2. Compute a hash of a given text.");
-        System.out.println("3. Encrypt a file.");
-        System.out.println("4. Encrypt a given text.");
-        System.out.println("5. Decrypt a file.");
-        System.out.println("6. Decrypt a given text.");
-        System.out.println("7. Exit.");
+        System.out.println("3. Compute an authentication tag of a file.");
+        System.out.println("4. Compute an authentication tag of a given text.");
+        System.out.println("5. Encrypt a file.");
+        System.out.println("6. Encrypt a given text.");
+        System.out.println("7. Decrypt a file.");
+        System.out.println("8. Decrypt a given text.");
+        System.out.println("9. Exit.");
 
         int choice = scanner.nextInt();
 
@@ -76,17 +78,29 @@ public class Main {
                 }
             }
             case 3 -> {
-                byte[] encrypted = encrypt(input, thePassPhrase);
-                if (encrypted != null) {
-                    printByteArray(encrypted);                  // prints to console
+                byte[] tag = computeTag(input, pw);
+                if (tag != null) {
+                    printByteArray(tag);
                 }
             }
             case 4 -> {
-                byte[] encryptInput = handleInputToBytes();
-                String passInput = scanner.nextLine();
-                encrypt(encryptInput, passInput);
+                byte[] tagInput = handleInputToBytes();
+                byte[] pwInput = handleInputToBytes();
+                byte[] tag = computeTag(tagInput, pwInput);
+                if (tag != null) {
+                    printByteArray(tag);
+                }
             }
-            case 5 -> decrypt(input, pw);
+            case 5 -> {
+                byte[] encrypted = encrypt(input, pw);
+                printByteArray(encrypted);                      // prints to console
+            }
+            case 6 -> {
+                byte[] encryptInput = handleInputToBytes();
+                byte[] selected_pw = handleInputToBytes();
+                encrypt(encryptInput, selected_pw);
+            }
+            case 7 -> decrypt(input, pw);
         }
     }
 
@@ -136,14 +150,13 @@ public class Main {
         return sha3.KMACXOF256("".getBytes(), m, 512, "D".getBytes());
     }
 
-    private static byte[] computeTag(byte[] theBytes, String thePassphrase) {
-        return null;
+    private static byte[] computeTag(byte[] m, byte[] pw) {
+        return sha3.KMACXOF256(pw, m, 512, "T".getBytes());
     }
 
     // Takes input and passphrase, encrypts,
-    private static byte[] encrypt(byte[] m, String thePassphrase) {
+    private static byte[] encrypt(byte[] m, byte[] pw) {
         byte[] z = randomizeBits(512);
-        byte[] pw = thePassphrase.getBytes();
 
         // concatenate z and pw
         byte[] concat = new byte[z.length + pw.length];
@@ -173,8 +186,34 @@ public class Main {
     }
 
     private static byte[] decrypt(byte[] zct, byte[] pw) {
-//        byte[] ke = new byte[];
-//        byte[] ka = new byte[];
+        byte[] z = Arrays.copyOfRange(zct, 0, 64);
+        byte[] c = Arrays.copyOfRange(zct, 64, zct.length - 64); // middle???
+        byte[] t = Arrays.copyOfRange(zct, zct.length - 64, zct.length);
+
+        byte[] concat = new byte[z.length + pw.length];
+        System.arraycopy(z, 0, concat, 0, z.length);
+        System.arraycopy(pw, 0, concat, pw.length, pw.length);
+
+        byte[] ke_ka = sha3.KMACXOF256(concat, "".getBytes(), 1024, "S".getBytes());
+        byte[] ke = new byte[ke_ka.length / 2];
+        byte[] ka = new byte[ke_ka.length / 2];
+        System.arraycopy(ke_ka, 0, ke, 0, ke.length);
+        System.arraycopy(ke_ka, ke.length, ka, 0, ka.length);
+
+        byte[] mKey = sha3.KMACXOF256(ke, "".getBytes(), c.length * 8, "SKE".getBytes());
+
+        byte[] m = XOR(mKey, c);
+
+        byte[] t_prime = sha3.KMACXOF256(ka, m, 512, "SKA".getBytes());
+
+        if (Arrays.equals(t, t_prime)) {
+            System.out.println("Decryption Successful!");
+            return m;
+        } else {
+            System.out.println("Decryption failed.");
+            printByteArray(t);
+            printByteArray(t_prime);
+        }
         return null;
     }
 
