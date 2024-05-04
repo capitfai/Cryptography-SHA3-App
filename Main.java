@@ -4,9 +4,14 @@
  * TCSS487 - Spring 2024
  */
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -28,13 +33,36 @@ public class Main {
             System.exit(1);
         }
 
-        String inputFile = args[0];
-        String outputFile = args[1];
+        String inputPath = args[0];
+        String outputPath = args[1];
         String passphrase = args[2];
-        handleUserInput(inputFile, outputFile, passphrase);
-        final Path output = Paths.get(outputFile);
 
+        String input = readInputFile(inputPath);
+        handleUserInput(input, outputPath, passphrase);
 
+    }
+
+    private static String readInputFile(String TheInputPath) throws IOException {
+        BufferedReader br = new BufferedReader(new FileReader(TheInputPath));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = br.readLine()) != null) {
+            sb.append(line);
+        }
+        br.close();
+        return sb.toString();
+    }
+
+    private static void writeStringToFile(String TheString, String TheFilePath) throws IOException {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(TheFilePath))) {
+            bw.write(TheString);
+        }
+    }
+
+    private static void writeBytesToFile(byte[] data, String TheFilePath) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(TheFilePath)) {
+            fos.write(data);
+        }
     }
 
     public static void handleUserInput(String theInputFile, String theOutputFile,
@@ -69,6 +97,7 @@ public class Main {
                 if (hashResult != null) {
                     printByteArray(hashResult);                 // prints to console
                 }
+                writeBytesToFile(hashResult, theOutputFile);
             }
             case 2 -> {
                 byte[] hashInput = handleInputToBytes();
@@ -76,12 +105,14 @@ public class Main {
                 if (hashResult != null) {
                     printByteArray(hashInput);                  // prints to console
                 }
+                writeBytesToFile(hashInput, theOutputFile);
             }
             case 3 -> {
                 byte[] tag = computeTag(input, pw);
                 if (tag != null) {
                     printByteArray(tag);
                 }
+                writeBytesToFile(tag, theOutputFile);
             }
             case 4 -> {
                 byte[] tagInput = handleInputToBytes();
@@ -90,17 +121,25 @@ public class Main {
                 if (tag != null) {
                     printByteArray(tag);
                 }
+                writeBytesToFile(tag, theOutputFile);
             }
             case 5 -> {
                 byte[] encrypted = encrypt(input, pw);
                 printByteArray(encrypted);                      // prints to console
+                writeBytesToFile(encrypted, theOutputFile);
             }
             case 6 -> {
                 byte[] encryptInput = handleInputToBytes();
                 byte[] selected_pw = handleInputToBytes();
-                encrypt(encryptInput, selected_pw);
+                byte[] encrypted = encrypt(encryptInput, selected_pw);
+                printByteArray(encrypted);
+                writeBytesToFile(encrypted, theOutputFile);
             }
-            case 7 -> decrypt(input, pw);
+            case 7 -> decrypt(input, pw, theOutputFile);
+            case 8 -> {
+                System.out.println("Exiting SHA3 App.");
+                System.exit(0);
+            }
         }
     }
 
@@ -185,7 +224,7 @@ public class Main {
         return result;
     }
 
-    private static byte[] decrypt(byte[] zct, byte[] pw) {
+    private static void decrypt(byte[] zct, byte[] pw, String TheOutputFile) throws IOException {
         byte[] z = Arrays.copyOfRange(zct, 0, 64);
         byte[] c = Arrays.copyOfRange(zct, 64, zct.length - 64); // middle???
         byte[] t = Arrays.copyOfRange(zct, zct.length - 64, zct.length);
@@ -208,13 +247,14 @@ public class Main {
 
         if (Arrays.equals(t, t_prime)) {
             System.out.println("Decryption Successful!");
-            return m;
+            String str = new String(m, StandardCharsets.UTF_8);
+            System.out.println(str);
+            writeStringToFile(str, TheOutputFile);
         } else {
             System.out.println("Decryption failed.");
             printByteArray(t);
             printByteArray(t_prime);
         }
-        return null;
     }
 
 
