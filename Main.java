@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -38,7 +39,8 @@ public class Main {
         String passphrase = args[2];
 
         String input = readInputFile(inputPath);
-        handleUserInput(input, outputPath, passphrase);
+        String pw = readInputFile(passphrase);
+        handleUserInput(input, outputPath, pw);
 
     }
 
@@ -65,7 +67,7 @@ public class Main {
         }
     }
 
-    public static void handleUserInput(String theInputFile, String theOutputFile,
+    public static void handleUserInput(String theInputFile, String theOutputPath,
                                        String thePassPhrase) throws IOException {
         byte[] input = Files.readAllBytes(Paths.get(theInputFile));
         byte[] pw = thePassPhrase.getBytes();
@@ -97,7 +99,7 @@ public class Main {
                 if (hashResult != null) {
                     printByteArray(hashResult);                 // prints to console
                 }
-                writeBytesToFile(hashResult, theOutputFile);
+                writeBytesToFile(hashResult, theOutputPath);
             }
             case 2 -> {
                 byte[] hashInput = handleInputToBytes();
@@ -105,14 +107,14 @@ public class Main {
                 if (hashResult != null) {
                     printByteArray(hashInput);                  // prints to console
                 }
-                writeBytesToFile(hashInput, theOutputFile);
+                writeBytesToFile(hashInput, theOutputPath);
             }
             case 3 -> {
                 byte[] tag = computeTag(input, pw);
                 if (tag != null) {
                     printByteArray(tag);
                 }
-                writeBytesToFile(tag, theOutputFile);
+                writeBytesToFile(tag, theOutputPath);
             }
             case 4 -> {
                 byte[] tagInput = handleInputToBytes();
@@ -121,21 +123,21 @@ public class Main {
                 if (tag != null) {
                     printByteArray(tag);
                 }
-                writeBytesToFile(tag, theOutputFile);
+                writeBytesToFile(tag, theOutputPath);
             }
             case 5 -> {
                 byte[] encrypted = encrypt(input, pw);
                 printByteArray(encrypted);                      // prints to console
-                writeBytesToFile(encrypted, theOutputFile);
+                writeBytesToFile(encrypted, theOutputPath);
             }
             case 6 -> {
                 byte[] encryptInput = handleInputToBytes();
                 byte[] selected_pw = handleInputToBytes();
                 byte[] encrypted = encrypt(encryptInput, selected_pw);
                 printByteArray(encrypted);
-                writeBytesToFile(encrypted, theOutputFile);
+                writeBytesToFile(encrypted, theOutputPath);
             }
-            case 7 -> decrypt(input, pw, theOutputFile);
+            case 7 -> decrypt(input, pw, theOutputPath);
             case 8 -> {
                 System.out.println("Exiting SHA3 App.");
                 System.exit(0);
