@@ -108,7 +108,16 @@ public class Main {
             System.out.println("5. Encrypt a file.");
             System.out.println("6. Encrypt a given text.");
             System.out.println("7. Decrypt a file.");
-            System.out.println("8. Exit.");
+            System.out.println("8. Generate a public key.");
+            System.out.println("9. Encrypt a private key.");
+            System.out.println("10. Encrypt a file under elliptic public key.");
+            System.out.println("11. Encrypt a given text under elliptic public key.");
+            System.out.println("12. Decrypt elliptic-encrypted file from passphrase.");
+            System.out.println("13. Generate a signature file.");
+            System.out.println("14. Generate a signature file under given text.");
+            System.out.println("15. Verify a file.");
+            System.out.println("16. Verify a given text.");
+            System.out.println("17. Exit.");
             choice = scanner.nextInt();
             scanner.nextLine();
             switch (choice) {
