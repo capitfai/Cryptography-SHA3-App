@@ -10,10 +10,12 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Random;
 import java.util.Scanner;
 
 /**
@@ -33,6 +35,8 @@ public class Main {
      */
     public static ArrayList<byte[]> zct;
 
+    public static EncryptedData ellipticEncryption;
+
     /**
      * Value storing computed private key.
      */
@@ -42,6 +46,12 @@ public class Main {
      * Value storing computed public key.
      */
     private static Ed448Point publicKey;
+
+    private static final BigInteger r = (BigInteger.TWO).pow(446).subtract(
+            new BigInteger("13818066809895115352007386748515426880336692474882178609894547503885"));
+
+    private static final BigInteger P =
+            BigInteger.TWO.pow(448).subtract(BigInteger.TWO.pow(224)).subtract(BigInteger.ONE);
 
     /**
      * Driver method that kicks off program and takes in string arguments for files.
@@ -197,8 +207,11 @@ public class Main {
                     writeStringToFile(str, TheKeyFile);     // writes private encrypted key to different file
                 }
                 case 9 -> {
-                    // Encrypt a data file under a given elliptic public key file and write
-                    // the ciphertext to a file.
+                    if (publicKey != null) {
+                        encryptWithKey(input, TheOutputFile);
+                    } else {
+                        System.out.println("Key generation must be completed first.");
+                    }
                 }
                 case 10 -> {
                     // Encrypt text input by the user directly to the app instead of
@@ -410,14 +423,9 @@ public class Main {
         byte[] sBytes = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
         BigInteger s = new BigInteger(sBytes);
 
-        // Compute r as defined in the document
-        BigInteger r = (BigInteger.TWO).pow(446).subtract(
-                new BigInteger("13818066809895115352007386748515426880336692474882178609894547503885"));
-
         s = s.multiply(BigInteger.valueOf(4)).mod(r);
 
         // Generate public key
-        BigInteger P = BigInteger.TWO.pow(448).subtract(BigInteger.TWO.pow(224)).subtract(BigInteger.ONE);
         BigInteger Gy = BigInteger.valueOf(-3).mod(P);
         Ed448Point G = new Ed448Point(false, Gy);
         Ed448Point V = G.multiply(s);
@@ -425,6 +433,71 @@ public class Main {
         privateKey = s;
         publicKey = V;
 
+    }
+
+    /**
+     * Encrypts a byte array under (Schnorr/DHIES) public key.
+     * @param m byte array input.
+     */
+    public static void encryptWithKey(byte[] m, String TheOutputFile) {
+
+        Random ran = new Random();
+        BigInteger k = new BigInteger(448, ran);
+        k = k.multiply(BigInteger.valueOf(4)).mod(r);
+
+        Ed448Point W = publicKey.multiply(k);
+        Ed448Point Z = new Ed448Point(false, BigInteger.valueOf(-3).mod(P));
+
+        byte[] Wx = W.getX().toByteArray();
+        byte[] concat = new byte[Z.getX().toByteArray().length + Wx.length];
+        System.arraycopy(Z.getX().toByteArray(), 0, concat, 0, Z.getX().toByteArray().length);
+        System.arraycopy(Wx, 0, concat, Z.getX().toByteArray().length, Wx.length);
+
+        byte[] ka_ke = sha3.KMACXOF256(Wx, "".getBytes(), (448 * 2), "PK".getBytes());
+
+        byte[] ke = Arrays.copyOfRange(ka_ke, 0, 448 / 8);
+        byte[] ka = Arrays.copyOfRange(ka_ke, 448 / 8, ka_ke.length);
+
+        byte[] cKey = sha3.KMACXOF256(ke, "".getBytes(), m.length * 8, "PKE".getBytes());
+        byte[] c = XOR(cKey, m);
+
+        byte[] t = sha3.KMACXOF256(ka, m, 448, "PKA".getBytes());
+
+        ellipticEncryption = new EncryptedData(Z, c, t);
+
+        try (BufferedWriter wr = new BufferedWriter(new FileWriter(TheOutputFile))) {
+            wr.write(ellipticEncryption.getZ().toString() + bytesToHex(ellipticEncryption.getC())
+                    + bytesToHex(ellipticEncryption.getT()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Helper class to store elliptically encrypted data (Z, c, t).
+     */
+    public static class EncryptedData {
+        private final Ed448Point Z;
+        private final byte[] c;
+        private final byte[] t;
+
+        public EncryptedData(Ed448Point Z, byte[] c, byte[] t) {
+            this.Z = Z;
+            this.c = c;
+            this.t = t;
+        }
+
+        public Ed448Point getZ() {
+            return Z;
+        }
+
+        public byte[] getC() {
+            return c;
+        }
+
+        public byte[] getT() {
+            return t;
+        }
     }
 
 }
