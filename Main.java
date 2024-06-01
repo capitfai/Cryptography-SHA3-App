@@ -214,13 +214,16 @@ public class Main {
                     }
                 }
                 case 10 -> {
-                    // Encrypt text input by the user directly to the app instead of
-                    // having to read it from a file (but write the ciphertext to a file).
+                    if (publicKey != null) {
+                        System.out.println("Please enter the input you want to elliptically encrypt: \n");
+                        byte[] encryptInput = handleInputToBytes();     // takes user input to encrypt instead of file
+                        encryptWithKey(encryptInput, TheOutputFile);
+                    } else {
+                        System.out.println("Key generation must be completed first.");
+                    }
+
                 }
-                case 11 -> {
-                    // Decrypt a given elliptic-encrypted file from a given password and
-                    // write the decrypted data to a file.
-                }
+                case 11 -> decryptWithPassphrase(pw, TheOutputFile);
                 case 12 -> {
                     // Sign a given file from a given password and write the signature to
                     // a file.
@@ -470,6 +473,37 @@ public class Main {
                     + bytesToHex(ellipticEncryption.getT()));
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public static void decryptWithPassphrase(byte[] pw, String TheOutputFile) throws IOException {
+        byte[] sKey = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
+        BigInteger s = new BigInteger(sKey).multiply(BigInteger.valueOf(4)).mod(r);
+
+        // Compute W
+        Ed448Point W = ellipticEncryption.getZ().multiply(s);
+
+        // Compute ka || ke using W
+        byte[] Wx = W.getX().toByteArray();
+        byte[] ka_ke = sha3.KMACXOF256(Wx, "".getBytes(), 2 * 448, "PK".getBytes());
+        byte[] ka = Arrays.copyOfRange(ka_ke, 0, 448 / 8);
+        byte[] ke = Arrays.copyOfRange(ka_ke, 448 / 8, ka_ke.length);
+
+        byte[] mKey = sha3.KMACXOF256(ke, "".getBytes(), ellipticEncryption.getC().length * 8, "PKE".getBytes());
+        byte[] m = XOR(mKey, ellipticEncryption.getC());
+
+        byte[] t_prime = sha3.KMACXOF256(ka, m, 448, "PKA".getBytes());
+
+        // Accepts and prints to file only if t and t' are equal
+        if (Arrays.equals(ellipticEncryption.getT(), t_prime)) {
+            System.out.println("Decryption Successful!");
+            String str = new String(m, StandardCharsets.UTF_8);
+            System.out.println(str);
+            writeStringToFile(str, TheOutputFile);
+        } else {
+            System.out.println("Decryption failed.");
+            printByteArray(ellipticEncryption.getT());
+            printByteArray(t_prime);
         }
     }
 
