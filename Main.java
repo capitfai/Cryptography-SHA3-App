@@ -10,12 +10,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Random;
 import java.util.Scanner;
 
 /**
@@ -37,6 +35,8 @@ public class Main {
 
     public static EncryptedData ellipticEncryption;
 
+    public static Signature signature;
+
     /**
      * Value storing computed private key.
      */
@@ -49,11 +49,6 @@ public class Main {
 
     private static final BigInteger r = (BigInteger.TWO).pow(446).subtract(
             new BigInteger("13818066809895115352007386748515426880336692474882178609894547503885"));
-
-//    private static final BigInteger P =
-//            BigInteger.TWO.pow(448).subtract(BigInteger.TWO.pow(224)).subtract(BigInteger.ONE);
-//
-//    private static final BigInteger D = BigInteger.valueOf(-39081);
 
     /**
      * Driver method that kicks off program and takes in string arguments for files.
@@ -116,10 +111,9 @@ public class Main {
      * @param TheInputFile The contents of the input file.
      * @param TheOutputFile The name of the output file.
      * @param ThePassphraseFile The name of the passphrase file.
-     * @throws IOException For reading files.
      */
     public static void handleUserInput(String TheInputFile, String TheOutputFile,
-                                       String ThePassphraseFile, String TheKeyFile) throws IOException {
+                                       String ThePassphraseFile, String TheKeyFile) {
         byte[] input = TheInputFile.getBytes();
         byte[] pw = ThePassphraseFile.getBytes();
         System.out.println("Welcome to SHA3 App! \n");
@@ -207,10 +201,13 @@ public class Main {
                     byte[] encrypted = encrypt(privateKey.toByteArray(), pw);
                     String str = bytesToHex(encrypted);
                     writeStringToFile(str, TheKeyFile);     // writes private encrypted key to different file
+                    System.out.println("Key pair generated successfully. Public key has been written to output.txt "
+                    + "and private key has been written to key.txt \n");
                 }
                 case 9 -> {
                     if (publicKey != null) {
                         encryptWithKey(input, TheOutputFile);
+                        System.out.println("Encryption successful and has been written to output.txt \n");
                     } else {
                         System.out.println("Key generation must be completed first.");
                     }
@@ -220,6 +217,7 @@ public class Main {
                         System.out.println("Please enter the input you want to elliptically encrypt: \n");
                         byte[] encryptInput = handleInputToBytes();     // takes user input to encrypt instead of file
                         encryptWithKey(encryptInput, TheOutputFile);
+                        System.out.println("Encryption successful and has been written to output.txt \n");
                     } else {
                         System.out.println("Key generation must be completed first.");
                     }
@@ -227,8 +225,8 @@ public class Main {
                 }
                 case 11 -> decryptWithPassphrase(pw, TheOutputFile);
                 case 12 -> {
-                    // Sign a given file from a given password and write the signature to
-                    // a file.
+                    signature(input, pw, TheOutputFile);
+                    System.out.println("File has been successfully signed and has been written to output.txt \n");
                 }
                 case 13 -> {
                     // Sign text input by the user directly to the app instead of
@@ -445,30 +443,11 @@ public class Main {
     public static void encryptWithKey(byte[] m, String TheOutputFile) {
 
         byte[] kKey = randomizeBits(448);
-        SecureRandom ran = new SecureRandom();
         BigInteger kInt = new BigInteger(kKey);
         BigInteger k = kInt.multiply(BigInteger.valueOf(4)).mod(r);
 
         Ed448Point W = publicKey.multiply(k);
         Ed448Point Z = Ed448Point.G.multiply(k);
-
-        //byte[] concat = new byte[z.length + pw.length];
-        //        System.arraycopy(z, 0, concat, 0, z.length);
-        //        System.arraycopy(pw, 0, concat, pw.length, pw.length);
-        //
-        //        // perform XOF function on z || pw
-        //        byte[] concatKeys = sha3.KMACXOF256(concat, "".getBytes(), 1024, "S".getBytes());
-        //        byte[] ke = new byte[concatKeys.length / 2];
-        //        byte[] ka = new byte[concatKeys.length / 2];
-        //        System.arraycopy(concatKeys, 0, ke, 0, ke.length);
-        //        System.arraycopy(concatKeys, ke.length, ka, 0, ka.length);
-        //
-        //        byte[] cKey = sha3.KMACXOF256(ke, "".getBytes(), m.length * 8, "SKE".getBytes());
-        //
-        //        // c <- XOR'd bits
-        //        byte[] c = XOR(cKey, m);
-        //
-        //        byte[] t = sha3.KMACXOF256(ka, m, 512, "SKA".getBytes());
 
         byte[] ka_ke = sha3.KMACXOF256(W.getX().toByteArray(), "".getBytes(), (448 * 2), "PK".getBytes());
 
@@ -500,14 +479,6 @@ public class Main {
         // Compute W
         Ed448Point W = ellipticEncryption.getZ().multiply(s);
 
-        //byte[] ke_ka = sha3.KMACXOF256(concat, "".getBytes(), 1024, "S".getBytes());
-        //            byte[] ke = new byte[ke_ka.length / 2];
-        //            byte[] ka = new byte[ke_ka.length / 2];
-        //            System.arraycopy(ke_ka, 0, ke, 0, ke.length);
-        //            System.arraycopy(ke_ka, ke.length, ka, 0, ka.length);
-        //
-        //            byte[] mKey = sha3.KMACXOF256(ke, "".getBytes(), c.length * 8, "SKE".getBytes());
-
         // Compute ka || ke using W
         byte[] ka_ke = sha3.KMACXOF256(W.getX().toByteArray(), "".getBytes(), 2 * 448, "PK".getBytes());
         byte[] ka = new byte[ka_ke.length / 2];
@@ -523,15 +494,36 @@ public class Main {
 
         // Accepts and prints to file only if t and t' are equal
         if (Arrays.equals(ellipticEncryption.getT(), t_prime)) {
-            System.out.println("Decryption Successful!");
+            System.out.println("Decryption Successful! \n");
             String str = new String(m, StandardCharsets.UTF_8);
-            System.out.println(str);
+//            System.out.println(str);
             writeStringToFile(str, TheOutputFile);
+            System.out.println("Decrypted data written in output.txt \n");
         } else {
             System.out.println("Decryption failed.");
             printByteArray(ellipticEncryption.getT());
             printByteArray(t_prime);
         }
+    }
+
+    public static void signature(byte[] m, byte[] pw, String TheOutputFile) {
+        byte[] sBytes = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
+        BigInteger s = new BigInteger(sBytes).multiply(BigInteger.valueOf(4)).mod(r);       // s <- 4s mod r
+
+        byte[] kBytes = sha3.KMACXOF256(s.toByteArray(), m, 448, "N".getBytes());
+        BigInteger k = new BigInteger(kBytes).multiply(BigInteger.valueOf(4)).mod(r);       // s <- 4s mod r
+
+        Ed448Point U = Ed448Point.G.multiply(k);                                            // U <- k*G
+
+        byte[] hBytes = sha3.KMACXOF256(U.getX().toByteArray(), m, 448, "T".getBytes());
+        BigInteger h = new BigInteger(hBytes);
+
+        BigInteger zKey = k.subtract(h.multiply(s));
+        BigInteger z = zKey.mod(r);
+
+        signature = new Signature(h, z);
+        writeStringToFile(signature.toString(), TheOutputFile);
+
     }
 
     /**
@@ -558,6 +550,31 @@ public class Main {
 
         public byte[] getT() {
             return t;
+        }
+    }
+
+    public static class Signature {
+
+        private final BigInteger h;
+
+        private final BigInteger z;
+
+        public Signature(BigInteger h, BigInteger z) {
+            this.h = h;
+            this.z = z;
+        }
+
+        public BigInteger getH() {
+            return h;
+        }
+
+        public BigInteger getZ() {
+            return z;
+        }
+
+        @Override
+        public String toString() {
+            return "H: " + h.toString() + "\nZ: " + z.toString();
         }
     }
 
