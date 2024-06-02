@@ -20,6 +20,8 @@ public class Ed448Point {
     // Curve parameter D
     public static final BigInteger D = BigInteger.valueOf(-39081);
 
+    public static final Ed448Point G = new Ed448Point(false, BigInteger.valueOf(8), P);
+
     private BigInteger x;
     private BigInteger y;
 
@@ -51,20 +53,12 @@ public class Ed448Point {
      * @param xLsb The least significant bit of the x-coordinate.
      * @param y The y-coordinate of the point.
      */
-    public Ed448Point(boolean xLsb, BigInteger y) {
-        this.y = y.mod(P);
-        BigInteger y2 = this.y.pow(2).mod(P);
-        BigInteger num = BigInteger.ONE.subtract(y2).mod(P);
-        BigInteger denom = BigInteger.ONE.add(D.multiply(y2)).mod(P);
-        BigInteger denomInv = denom.modInverse(P);
-        BigInteger x2 = num.multiply(denomInv).mod(P);
-        this.x = sqrt(x2, P, xLsb);
-        if (this.x == null) {
-            throw new IllegalArgumentException("No valid x-coordinate found for the given y-coordinate");
-        }
-        if (!isValidPoint()) {
-            throw new IllegalArgumentException("The provided coordinates do not lie on the curve");
-        }
+    public Ed448Point(boolean xLsb, BigInteger x, BigInteger y) {
+        this.x = x;
+        BigInteger numerator = BigInteger.ONE.subtract(x.pow(2));
+        BigInteger denominator = BigInteger.ONE.subtract(D.multiply(x.pow(2))); // 1 + 39801 * x^2, d = -39801
+        BigInteger v = numerator.multiply(denominator.modInverse(P)).mod(P);
+        this.y = sqrt(v, P, xLsb);
     }
 
     public BigInteger getX() {
@@ -79,24 +73,21 @@ public class Ed448Point {
     /**
      * Add this point to another point using the Edwards point addition formula.
      *
-     * @param oth The other point.
+     * @param pt The other point.
      * @return The sum of the points.
      */
 
-    public Ed448Point add(Ed448Point oth) {
-        BigInteger x1 = this.x;
-        BigInteger y1 = this.y;
-        BigInteger x2 = oth.x;
-        BigInteger y2 = oth.y;
+    public Ed448Point add(Ed448Point pt) {
+        BigInteger factor = this.x.multiply(this.y).multiply(pt.x).multiply(pt.y);
+        BigInteger nX = (this.x.multiply(pt.y)).add(this.y.multiply(pt.x));
+        BigInteger dX = BigInteger.ONE.add(D.multiply(factor));
+        BigInteger nY = (this.y.multiply(pt.y)).subtract(this.x.multiply(pt.x));
+        BigInteger dY = BigInteger.ONE.subtract(D.multiply(factor));
 
-        BigInteger x1x2 = x1.multiply(x2).mod(P);
-        BigInteger y1y2 = y1.multiply(y2).mod(P);
-        BigInteger dx1x2y1y2 = D.multiply(x1x2).multiply(y1y2).mod(P);
+        BigInteger xCoor = (nX.multiply(dX.modInverse(P))).mod(P);
+        BigInteger yCoor = (nY.multiply(dY.modInverse(P))).mod(P);
 
-        BigInteger x3 = x1.multiply(y2).add(y1.multiply(x2)).multiply(BigInteger.ONE.add(dx1x2y1y2).modInverse(P)).mod(P);
-        BigInteger y3 = y1y2.subtract(x1x2).multiply(BigInteger.ONE.subtract(dx1x2y1y2).modInverse(P)).mod(P);
-
-        return new Ed448Point(x3, y3);
+        return new Ed448Point(xCoor, yCoor);
     }
 
     /**

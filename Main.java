@@ -76,8 +76,7 @@ public class Main {
 
         String input = readInputFile(inputName);
         String pw = readInputFile(passphrase);
-        String key = readInputFile(privateKey);
-        handleUserInput(input, outputName, pw, key);
+        handleUserInput(input, outputName, pw, privateKey);
 
     }
 
@@ -102,11 +101,12 @@ public class Main {
      * Writes to the output file specified in the parameter.
      * @param TheString The given string we want to write.
      * @param theFileName The name of file output.
-     * @throws IOException For reading files.
      */
-    private static void writeStringToFile(String TheString, String theFileName) throws IOException {
+    private static void writeStringToFile(String TheString, String theFileName) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(theFileName))) {
             bw.write(TheString);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -275,6 +275,7 @@ public class Main {
         for (byte b : TheArray) {
             System.out.print(b + " ");
         }
+        System.out.println();
     }
 
     /**
@@ -378,9 +379,8 @@ public class Main {
      * Decrypts given the passphrase and encrypted bytes.
      * @param pw passphrase in bytes.
      * @param TheOutputFile name of output file.
-     * @throws IOException For reading files.
      */
-    private static void decrypt(byte[] pw, String TheOutputFile) throws IOException {
+    private static void decrypt(byte[] pw, String TheOutputFile) {
         if (zct.isEmpty()) {
             System.out.println("File has not yet been encrypted. Decryption cannot continue.");
         } else {
@@ -430,8 +430,7 @@ public class Main {
         s = s.multiply(BigInteger.valueOf(4)).mod(r); // s = 4s (mod r)
 
         // Compute coordinates for G for public key
-        Ed448Point G = new Ed448Point(false, Ed448Point.P.subtract(BigInteger.valueOf(3)));
-        Ed448Point V = G.multiply(s);
+        Ed448Point V = Ed448Point.G.multiply(s);
 
         // store the values for later decryption
         privateKey = s;
@@ -445,22 +444,39 @@ public class Main {
      */
     public static void encryptWithKey(byte[] m, String TheOutputFile) {
 
-        Random ran = new Random();
-        BigInteger k = new BigInteger(448, ran);
-        k = k.multiply(BigInteger.valueOf(4)).mod(r);
+        byte[] kKey = randomizeBits(448);
+        SecureRandom ran = new SecureRandom();
+        BigInteger kInt = new BigInteger(kKey);
+        BigInteger k = kInt.multiply(BigInteger.valueOf(4)).mod(r);
 
         Ed448Point W = publicKey.multiply(k);
-        Ed448Point Z = new Ed448Point(false, BigInteger.valueOf(-3).mod(Ed448Point.P));
+        Ed448Point Z = Ed448Point.G.multiply(k);
 
-        byte[] Wx = W.getX().toByteArray();
-        byte[] concat = new byte[Z.getX().toByteArray().length + Wx.length];
-        System.arraycopy(Z.getX().toByteArray(), 0, concat, 0, Z.getX().toByteArray().length);
-        System.arraycopy(Wx, 0, concat, Z.getX().toByteArray().length, Wx.length);
+        //byte[] concat = new byte[z.length + pw.length];
+        //        System.arraycopy(z, 0, concat, 0, z.length);
+        //        System.arraycopy(pw, 0, concat, pw.length, pw.length);
+        //
+        //        // perform XOF function on z || pw
+        //        byte[] concatKeys = sha3.KMACXOF256(concat, "".getBytes(), 1024, "S".getBytes());
+        //        byte[] ke = new byte[concatKeys.length / 2];
+        //        byte[] ka = new byte[concatKeys.length / 2];
+        //        System.arraycopy(concatKeys, 0, ke, 0, ke.length);
+        //        System.arraycopy(concatKeys, ke.length, ka, 0, ka.length);
+        //
+        //        byte[] cKey = sha3.KMACXOF256(ke, "".getBytes(), m.length * 8, "SKE".getBytes());
+        //
+        //        // c <- XOR'd bits
+        //        byte[] c = XOR(cKey, m);
+        //
+        //        byte[] t = sha3.KMACXOF256(ka, m, 512, "SKA".getBytes());
 
-        byte[] ka_ke = sha3.KMACXOF256(Wx, "".getBytes(), (448 * 2), "PK".getBytes());
+        byte[] ka_ke = sha3.KMACXOF256(W.getX().toByteArray(), "".getBytes(), (448 * 2), "PK".getBytes());
 
-        byte[] ke = Arrays.copyOfRange(ka_ke, 0, 448 / 8);
-        byte[] ka = Arrays.copyOfRange(ka_ke, 448 / 8, ka_ke.length);
+        byte[] ka = new byte[ka_ke.length / 2];
+        byte[] ke = new byte[ka_ke.length / 2];
+
+        System.arraycopy(ka_ke, 0, ka, 0, ka.length);
+        System.arraycopy(ka_ke, ka.length, ke, 0, ke.length);
 
         byte[] cKey = sha3.KMACXOF256(ke, "".getBytes(), m.length * 8, "PKE".getBytes());
         byte[] c = XOR(cKey, m);
@@ -477,18 +493,28 @@ public class Main {
         }
     }
 
-    public static void decryptWithPassphrase(byte[] pw, String TheOutputFile) throws IOException {
+    public static void decryptWithPassphrase(byte[] pw, String TheOutputFile) {
         byte[] sKey = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
         BigInteger s = new BigInteger(sKey).multiply(BigInteger.valueOf(4)).mod(r);
 
         // Compute W
         Ed448Point W = ellipticEncryption.getZ().multiply(s);
 
+        //byte[] ke_ka = sha3.KMACXOF256(concat, "".getBytes(), 1024, "S".getBytes());
+        //            byte[] ke = new byte[ke_ka.length / 2];
+        //            byte[] ka = new byte[ke_ka.length / 2];
+        //            System.arraycopy(ke_ka, 0, ke, 0, ke.length);
+        //            System.arraycopy(ke_ka, ke.length, ka, 0, ka.length);
+        //
+        //            byte[] mKey = sha3.KMACXOF256(ke, "".getBytes(), c.length * 8, "SKE".getBytes());
+
         // Compute ka || ke using W
-        byte[] Wx = W.getX().toByteArray();
-        byte[] ka_ke = sha3.KMACXOF256(Wx, "".getBytes(), 2 * 448, "PK".getBytes());
-        byte[] ka = Arrays.copyOfRange(ka_ke, 0, 448 / 8);
-        byte[] ke = Arrays.copyOfRange(ka_ke, 448 / 8, ka_ke.length);
+        byte[] ka_ke = sha3.KMACXOF256(W.getX().toByteArray(), "".getBytes(), 2 * 448, "PK".getBytes());
+        byte[] ka = new byte[ka_ke.length / 2];
+        byte[] ke = new byte[ka_ke.length / 2];
+
+        System.arraycopy(ka_ke, 0, ka, 0, ka.length);
+        System.arraycopy(ka_ke, ka.length, ke, 0, ke.length);
 
         byte[] mKey = sha3.KMACXOF256(ke, "".getBytes(), ellipticEncryption.getC().length * 8, "PKE".getBytes());
         byte[] m = XOR(mKey, ellipticEncryption.getC());
