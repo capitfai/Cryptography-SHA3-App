@@ -50,8 +50,10 @@ public class Main {
     private static final BigInteger r = (BigInteger.TWO).pow(446).subtract(
             new BigInteger("13818066809895115352007386748515426880336692474882178609894547503885"));
 
-    private static final BigInteger P =
-            BigInteger.TWO.pow(448).subtract(BigInteger.TWO.pow(224)).subtract(BigInteger.ONE);
+//    private static final BigInteger P =
+//            BigInteger.TWO.pow(448).subtract(BigInteger.TWO.pow(224)).subtract(BigInteger.ONE);
+//
+//    private static final BigInteger D = BigInteger.valueOf(-39081);
 
     /**
      * Driver method that kicks off program and takes in string arguments for files.
@@ -424,15 +426,14 @@ public class Main {
 
         // Generate private key
         byte[] sBytes = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
-        BigInteger s = new BigInteger(sBytes);
+        BigInteger s = new BigInteger(1, sBytes);
+        s = s.multiply(BigInteger.valueOf(4)).mod(r); // s = 4s (mod r)
 
-        s = s.multiply(BigInteger.valueOf(4)).mod(r);
-
-        // Generate public key
-        BigInteger Gy = BigInteger.valueOf(-3).mod(P);
-        Ed448Point G = new Ed448Point(false, Gy);
+        // Compute coordinates for G for public key
+        Ed448Point G = new Ed448Point(false, Ed448Point.P.subtract(BigInteger.valueOf(3)));
         Ed448Point V = G.multiply(s);
 
+        // store the values for later decryption
         privateKey = s;
         publicKey = V;
 
@@ -449,7 +450,7 @@ public class Main {
         k = k.multiply(BigInteger.valueOf(4)).mod(r);
 
         Ed448Point W = publicKey.multiply(k);
-        Ed448Point Z = new Ed448Point(false, BigInteger.valueOf(-3).mod(P));
+        Ed448Point Z = new Ed448Point(false, BigInteger.valueOf(-3).mod(Ed448Point.P));
 
         byte[] Wx = W.getX().toByteArray();
         byte[] concat = new byte[Z.getX().toByteArray().length + Wx.length];

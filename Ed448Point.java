@@ -16,9 +16,9 @@ import java.math.BigInteger;
 public class Ed448Point {
 
     // Prime modulus for the finite field Fp
-    private static final BigInteger P = BigInteger.TWO.pow(448).subtract(BigInteger.TWO.pow(224)).subtract(BigInteger.ONE);
+    public static final BigInteger P = (BigInteger.TWO.pow(448).subtract(BigInteger.TWO.pow(224)).subtract(BigInteger.ONE));
     // Curve parameter D
-    private static final BigInteger D = BigInteger.valueOf(-39081);
+    public static final BigInteger D = BigInteger.valueOf(-39081);
 
     private BigInteger x;
     private BigInteger y;
@@ -52,10 +52,19 @@ public class Ed448Point {
      * @param y The y-coordinate of the point.
      */
     public Ed448Point(boolean xLsb, BigInteger y) {
-        BigInteger denominator = y.pow(2).multiply(D).add(BigInteger.ONE).mod(P);
-        BigInteger x2 = BigInteger.ONE.subtract(y.pow(2)).multiply(denominator.modInverse(P)).mod(P);
+        this.y = y.mod(P);
+        BigInteger y2 = this.y.pow(2).mod(P);
+        BigInteger num = BigInteger.ONE.subtract(y2).mod(P);
+        BigInteger denom = BigInteger.ONE.add(D.multiply(y2)).mod(P);
+        BigInteger denomInv = denom.modInverse(P);
+        BigInteger x2 = num.multiply(denomInv).mod(P);
         this.x = sqrt(x2, P, xLsb);
-        this.y = y;
+        if (this.x == null) {
+            throw new IllegalArgumentException("No valid x-coordinate found for the given y-coordinate");
+        }
+        if (!isValidPoint()) {
+            throw new IllegalArgumentException("The provided coordinates do not lie on the curve");
+        }
     }
 
     public BigInteger getX() {
