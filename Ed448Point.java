@@ -22,6 +22,8 @@ public class Ed448Point {
 
     public static final Ed448Point G = new Ed448Point(false, BigInteger.valueOf(8), P);
 
+    public static BigInteger publicKey = null;
+
     private BigInteger x;
     private BigInteger y;
 
@@ -59,6 +61,24 @@ public class Ed448Point {
         BigInteger denominator = BigInteger.ONE.subtract(D.multiply(x.pow(2))); // 1 + 39801 * x^2, d = -39801
         BigInteger v = numerator.multiply(denominator.modInverse(P)).mod(P);
         this.y = sqrt(v, P, xLsb);
+    }
+
+    /**
+     * Constructor to create an Edwards point given the y-coordinate and
+     * a specified least significant bit for the x-coordinate.
+     *
+     * @param xLsb The least significant bit of the x-coordinate.
+     * @param y The y-coordinate of the point.
+     */
+    public Ed448Point(boolean xLsb, BigInteger y) {
+        this.y = y.mod(P);
+        BigInteger numerator = BigInteger.ONE.subtract(y.pow(2)).mod(P);
+        BigInteger denominator = BigInteger.ONE.subtract(D.multiply(y.pow(2))).mod(P);
+        BigInteger v = numerator.multiply(denominator.modInverse(P)).mod(P);
+        this.x = sqrt(v, P, xLsb);
+        if (this.x == null) {
+            throw new IllegalArgumentException("The provided y-coordinate does not yield a valid x-coordinate on the curve");
+        }
     }
 
     public BigInteger getX() {
@@ -161,7 +181,7 @@ public class Ed448Point {
      */
     @Override
     public String toString() {
-        return "X is: " + x.toString(10) + " and Y is " + y.toString(10);
+        return "X: " + x.toString(10) + "\nY: " + y.toString(10);
     }
 
     /**
