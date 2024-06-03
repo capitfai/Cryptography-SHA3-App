@@ -9,6 +9,7 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -33,6 +34,37 @@ public class Main {
     public static ArrayList<byte[]> zct;
 
     /**
+     * Containing class for (Z, c, t) cryptogram.
+     */
+    public static EncryptedData ellipticEncryption;
+
+    /**
+     * Value storing computed private key.
+     */
+    private static BigInteger privateKey;
+
+    /**
+     * Value storing computed public key.
+     */
+    private static Ed448Point publicKey;
+
+    /**
+     * Used for calculating Goldilocks value r.
+     */
+    private static final BigInteger r = (BigInteger.TWO).pow(446).subtract(
+            new BigInteger("13818066809895115352007386748515426880336692474882178609894547503885"));
+
+    /**
+     *  h-value in signature generation.
+     */
+    private static BigInteger h;
+
+    /**
+     *  z-value in signature generation.
+     */
+    private static BigInteger z;
+
+    /**
      * Driver method that kicks off program and takes in string arguments for files.
      * @param args String arguments.
      * @throws IOException For file reading.
@@ -40,18 +72,22 @@ public class Main {
     public static void main(String[] args) throws IOException {
 
         zct = new ArrayList<>();
-        if (args.length < 3) {
-            System.out.println("Usage: java Main <input_file_path> <output_file_path> <password_path>");
+        if (args.length < 6) {
+            System.out.println("Usage: java Main <input_file_path> <output_file_path> <passphrase_path> " +
+                    "<private_key_path> >public_key_path> <signature_path>");
             System.exit(1);
         }
 
         String inputName = args[0];
         String outputName = args[1];
         String passphrase = args[2];
+        String privateKeyName = args[3];
+        String publicKeyName = args[4];
+        String signatureName = args[5];
 
         String input = readInputFile(inputName);
         String pw = readInputFile(passphrase);
-        handleUserInput(input, outputName, pw);
+        handleUserInput(input, outputName, pw, privateKeyName, publicKeyName, signatureName);
 
     }
 
@@ -76,26 +112,27 @@ public class Main {
      * Writes to the output file specified in the parameter.
      * @param TheString The given string we want to write.
      * @param theFileName The name of file output.
-     * @throws IOException For reading files.
      */
-    private static void writeStringToFile(String TheString, String theFileName) throws IOException {
+    private static void writeStringToFile(String TheString, String theFileName) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(theFileName))) {
             bw.write(TheString);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     /**
      * After starting the program, this is the central method that will keep prompting for input and call the
      * appropriate methods depending on the method specified.
-     * @param theInputFile The contents of the input file.
-     * @param TheOutputName The name of the output file.
-     * @param thePassPhrase The name of the passphrase file.
-     * @throws IOException For reading files.
+     * @param TheInputFile The contents of the input file.
+     * @param TheOutputFile The name of the output file.
+     * @param ThePassphraseFile The name of the passphrase file.
      */
-    public static void handleUserInput(String theInputFile, String TheOutputName,
-                                       String thePassPhrase) throws IOException {
-        byte[] input = theInputFile.getBytes();
-        byte[] pw = thePassPhrase.getBytes();
+    public static void handleUserInput(String TheInputFile, String TheOutputFile,
+                                       String ThePassphraseFile, String ThePrivateKeyFile, String ThePublicKeyFile,
+                                       String TheSignatureFile) throws IOException {
+        byte[] input = TheInputFile.getBytes();
+        byte[] pw = ThePassphraseFile.getBytes();
         System.out.println("Welcome to SHA3 App! \n");
 
         int choice;
@@ -108,7 +145,15 @@ public class Main {
             System.out.println("5. Encrypt a file.");
             System.out.println("6. Encrypt a given text.");
             System.out.println("7. Decrypt a file.");
-            System.out.println("8. Exit.");
+            System.out.println("8. Generate an elliptic key pair");
+            System.out.println("9. Encrypt a file under elliptic public key.");
+            System.out.println("10. Encrypt a given text under elliptic public key.");
+            System.out.println("11. Decrypt elliptic-encrypted file from passphrase.");
+            System.out.println("12. Generate a signature file.");
+            System.out.println("13. Generate a signature file under given text.");
+            System.out.println("14. Verify a file.");
+            System.out.println("15. Verify a given text.");
+            System.out.println("16. Exit.");
             choice = scanner.nextInt();
             scanner.nextLine();
             switch (choice) {
@@ -117,7 +162,7 @@ public class Main {
                     if (hashResult != null) {
                         String str = bytesToHex(hashResult);
                         System.out.println(str + "\n");                 // prints to console
-                        writeStringToFile(str, TheOutputName);
+                        writeStringToFile(str, TheOutputFile);
                     }
                 }
                 case 2 -> {
@@ -127,7 +172,7 @@ public class Main {
                     if (hashResult != null) {
                         String str = bytesToHex(hashResult);
                         System.out.println(str);                 // prints to console
-                        writeStringToFile(str, TheOutputName);
+                        writeStringToFile(str, TheOutputFile);
                     }
                 }
                 case 3 -> {
@@ -135,7 +180,7 @@ public class Main {
                     if (tag != null) {
                         String str = bytesToHex(tag);
                         System.out.println(str);                 // prints to console
-                        writeStringToFile(str, TheOutputName);
+                        writeStringToFile(str, TheOutputFile);
                     }
                 }
                 case 4 -> {
@@ -147,14 +192,14 @@ public class Main {
                     if (tag != null) {
                         String str = bytesToHex(tag);
                         System.out.println(str);                 // prints to console
-                        writeStringToFile(str, TheOutputName);
+                        writeStringToFile(str, TheOutputFile);
                     }
                 }
                 case 5 -> {
                     byte[] encrypted = encrypt(input, pw);
                     String str = bytesToHex(encrypted);
                     System.out.println(str);                 // prints to console
-                    writeStringToFile(str, TheOutputName);
+                    writeStringToFile(str, TheOutputFile);
                 }
                 case 6 -> {
                     System.out.println("Please enter the input you want to encrypt: \n");
@@ -164,10 +209,65 @@ public class Main {
                     byte[] encrypted = encrypt(encryptInput, selected_pw);
                     String str = bytesToHex(encrypted);
                     System.out.println(str);                 // prints to console
-                    writeStringToFile(str, TheOutputName);
+                    writeStringToFile(str, TheOutputFile);
                 }
-                case 7 -> decrypt(pw, TheOutputName);
+                case 7 -> decrypt(pw, TheOutputFile);
                 case 8 -> {
+                    generateKeyPair(pw);
+                    writeStringToFile(publicKey.toString(), ThePublicKeyFile);     // writes public key to file
+                    byte[] encrypted = encrypt(privateKey.toByteArray(), pw);
+                    String str = bytesToHex(encrypted);
+                    writeStringToFile(str, ThePrivateKeyFile);     // writes private encrypted key to different file
+                    System.out.println("Key pair generated successfully. Public key has been written to publicKey.txt "
+                    + "and private key has been written to privateKey.txt \n");
+                }
+                case 9 -> {
+                    if (publicKey != null) {
+                        encryptWithKey(input, TheOutputFile);
+                        System.out.println("Encryption successful and has been written to output.txt \n");
+                    } else {
+                        System.out.println("Key generation must be completed first.");
+                    }
+                }
+                case 10 -> {
+                    if (publicKey != null) {
+                        System.out.println("Please enter the input you want to elliptically encrypt: \n");
+                        byte[] encryptInput = handleInputToBytes();     // takes user input to encrypt instead of file
+                        encryptWithKey(encryptInput, TheOutputFile);
+                        System.out.println("Encryption successful and has been written to output.txt \n");
+                    } else {
+                        System.out.println("Key generation must be completed first.");
+                    }
+
+                }
+                case 11 -> decryptWithPassphrase(pw, TheOutputFile);
+                case 12 -> {
+                    signature(input, pw, TheSignatureFile);
+                    System.out.println("File has been successfully signed and written to signature.txt \n");
+                }
+                case 13 -> {
+                    System.out.println("Please enter the input you want to create a signature with: \n");
+                    byte[] userInput = handleInputToBytes();
+                    signature(userInput, pw, TheSignatureFile);
+                    System.out.println("Signature: \nH: " + h + "\nZ: " + z + "\n");
+                    System.out.println("File has been successfully signed and has also been written to signature.txt \n");
+                }
+                case 14 -> {
+                    if (publicKey != null && h != null && z != null) {
+                        readSignatureFile(TheSignatureFile);
+                        verifySignature(input, ThePublicKeyFile);
+                    } else {
+                        System.out.println("Please generate key pair and sign a file first.\n");
+                    }
+                }
+                case 15 -> {
+                    System.out.println("Please enter the input you want to verify: \n");
+                    byte[] userInput = handleInputToBytes();
+                    signature(userInput, pw, TheSignatureFile);
+                    readSignatureFile(TheSignatureFile);
+                    verifySignature(userInput, ThePublicKeyFile);
+                }
+                case 16 -> {
                     System.out.println("Exiting SHA3 App.");
                     System.exit(0);
                 }
@@ -200,6 +300,7 @@ public class Main {
         for (byte b : TheArray) {
             System.out.print(b + " ");
         }
+        System.out.println();
     }
 
     /**
@@ -303,9 +404,8 @@ public class Main {
      * Decrypts given the passphrase and encrypted bytes.
      * @param pw passphrase in bytes.
      * @param TheOutputFile name of output file.
-     * @throws IOException For reading files.
      */
-    private static void decrypt(byte[] pw, String TheOutputFile) throws IOException {
+    private static void decrypt(byte[] pw, String TheOutputFile) {
         if (zct.isEmpty()) {
             System.out.println("File has not yet been encrypted. Decryption cannot continue.");
         } else {
@@ -342,6 +442,225 @@ public class Main {
         }
     }
 
+    /**
+     * Generates a (Schnorr/DHIES) key pair from passphrase pw.
+     *
+     * @param pw the passphrase.
+     */
+    public static void generateKeyPair(byte[] pw) {
 
+        // Generate private key
+        byte[] sBytes = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
+        BigInteger s = new BigInteger(1, sBytes);
+        s = s.multiply(BigInteger.valueOf(4)).mod(r); // s = 4s (mod r)
+
+        // Compute coordinates for G for public key
+        Ed448Point V = Ed448Point.G.multiply(s);
+
+        // store the values for later decryption
+        privateKey = s;
+        publicKey = V;
+
+    }
+
+    /**
+     * Encrypts a byte array under (Schnorr/DHIES) public key.
+     * @param m byte array input.
+     */
+    public static void encryptWithKey(byte[] m, String TheOutputFile) {
+
+        byte[] kKey = randomizeBits(448);
+        BigInteger kInt = new BigInteger(kKey);
+        BigInteger k = kInt.multiply(BigInteger.valueOf(4)).mod(r);
+
+        Ed448Point W = publicKey.multiply(k);
+        Ed448Point Z = Ed448Point.G.multiply(k);
+
+        byte[] ka_ke = sha3.KMACXOF256(W.getX().toByteArray(), "".getBytes(), (448 * 2), "PK".getBytes());
+
+        byte[] ka = new byte[ka_ke.length / 2];
+        byte[] ke = new byte[ka_ke.length / 2];
+
+        System.arraycopy(ka_ke, 0, ka, 0, ka.length);
+        System.arraycopy(ka_ke, ka.length, ke, 0, ke.length);
+
+        byte[] cKey = sha3.KMACXOF256(ke, "".getBytes(), m.length * 8, "PKE".getBytes());
+        byte[] c = XOR(cKey, m);
+
+        byte[] t = sha3.KMACXOF256(ka, m, 448, "PKA".getBytes());
+
+        ellipticEncryption = new EncryptedData(Z, c, t);
+
+        try (BufferedWriter wr = new BufferedWriter(new FileWriter(TheOutputFile))) {
+            wr.write(ellipticEncryption.getZ().toString() + bytesToHex(ellipticEncryption.getC())
+                    + bytesToHex(ellipticEncryption.getT()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Decrypt a cryptogram (Z, c, t) under passphrase.
+     * @param pw the passphrase.
+     * @param TheOutputFile output file to write cryptogram to.
+     */
+    public static void decryptWithPassphrase(byte[] pw, String TheOutputFile) {
+        byte[] sKey = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
+        BigInteger s = new BigInteger(sKey).multiply(BigInteger.valueOf(4)).mod(r);
+
+        // Compute W
+        Ed448Point W = ellipticEncryption.getZ().multiply(s);
+
+        // Compute ka || ke using W
+        byte[] ka_ke = sha3.KMACXOF256(W.getX().toByteArray(), "".getBytes(), 2 * 448, "PK".getBytes());
+        byte[] ka = new byte[ka_ke.length / 2];
+        byte[] ke = new byte[ka_ke.length / 2];
+
+        System.arraycopy(ka_ke, 0, ka, 0, ka.length);
+        System.arraycopy(ka_ke, ka.length, ke, 0, ke.length);
+
+        byte[] mKey = sha3.KMACXOF256(ke, "".getBytes(), ellipticEncryption.getC().length * 8, "PKE".getBytes());
+        byte[] m = XOR(mKey, ellipticEncryption.getC());
+
+        byte[] t_prime = sha3.KMACXOF256(ka, m, 448, "PKA".getBytes());
+
+        // Accepts and prints to file only if t and t' are equal
+        if (Arrays.equals(ellipticEncryption.getT(), t_prime)) {
+            System.out.println("Decryption Successful! \n");
+            String str = new String(m, StandardCharsets.UTF_8);
+//            System.out.println(str);
+            writeStringToFile(str, TheOutputFile);
+            System.out.println("Decrypted data written in output.txt \n");
+        } else {
+            System.out.println("Decryption failed.");
+            printByteArray(ellipticEncryption.getT());
+            printByteArray(t_prime);
+        }
+    }
+
+    /**
+     * Generating a signature for a byte array under passphrase.
+     * @param m byte array input
+     * @param pw the passphrase
+     * @param TheSignatureFile file to write signature to
+     */
+    public static void signature(byte[] m, byte[] pw, String TheSignatureFile) {
+        byte[] sBytes = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
+        BigInteger s = new BigInteger(sBytes).multiply(BigInteger.valueOf(4)).mod(r);       // s <- 4s mod r
+
+        byte[] kBytes = sha3.KMACXOF256(s.toByteArray(), m, 448, "N".getBytes());
+        BigInteger k = new BigInteger(kBytes).multiply(BigInteger.valueOf(4)).mod(r);       // s <- 4s mod r
+
+        Ed448Point U = Ed448Point.G.multiply(k);                                            // U <- k*G
+
+        byte[] hBytes = sha3.KMACXOF256(U.getX().toByteArray(), m, 448, "T".getBytes());
+        BigInteger h0 = new BigInteger(hBytes);
+
+        BigInteger zKey = k.subtract(h0.multiply(s));
+        BigInteger z0 = zKey.mod(r);
+
+        h = h0;
+        z = z0;
+        String str = "H: " + h + "\nZ: " + z;
+        writeStringToFile(str, TheSignatureFile);
+
+    }
+
+    /**
+     * Verify a signature (h, z) for a byte array under (Schnorr/DHIES) public key.
+     * @param m byte array input
+     * @param TheKeyFile the file to write the key to
+     */
+    public static void verifySignature(byte[] m, String TheKeyFile) {
+
+        // read key file
+        Ed448Point publicKey = readKeyFile(TheKeyFile);
+
+        // U <- z*G + h*V
+        Ed448Point U = Ed448Point.G.multiply(z).add(publicKey.multiply(h));
+
+        byte[] hBytes = sha3.KMACXOF256(U.getX().toByteArray(), m, 448, "T".getBytes());
+        BigInteger h_prime = new BigInteger(hBytes);
+        if (h_prime.equals(h)) {
+            System.out.println("Verification Successful!\n" + h_prime);
+        } else {
+            System.out.println("Verification unsuccessful. Please try again. \nNote: Option works with given\n"
+            + "files and not with newly created signature with user input. To work, please generate a key pair\n"
+            + "and sign a given file, then select this option.");
+        }
+    }
+
+    /**
+     * Helper method to read file with key written into it and returns an Ed448Point.
+     * @param fileName file name to read through.
+     * @return elliptic curve point for further arithmetic.
+     */
+    public static Ed448Point readKeyFile(String fileName) {
+        BigInteger x = null;
+        BigInteger y = null;
+        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("X:")) {
+                    x = new BigInteger(line.substring(2).trim());
+                } else if (line.startsWith("Y:")) {
+                    y = new BigInteger(line.substring(2).trim());
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        if (x != null && y != null) {
+            return new Ed448Point(x, y);
+        } else {
+            throw new IllegalArgumentException("The key file is missing x or y coordinate.");
+        }
+    }
+
+    /**
+     * Helper method to read file with signature written into it and assigns signature value.
+     * @param fileName the file name to read from.
+     */
+    public static void readSignatureFile(String fileName) {
+        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("H:")) {
+                    h = new BigInteger(line.substring(2).trim());
+                } else if (line.startsWith("Z:")) {
+                    z = new BigInteger(line.substring(2).trim());
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Helper class to store elliptically encrypted data (Z, c, t).
+     */
+    public static class EncryptedData {
+        private final Ed448Point Z;
+        private final byte[] c;
+        private final byte[] t;
+
+        public EncryptedData(Ed448Point Z, byte[] c, byte[] t) {
+            this.Z = Z;
+            this.c = c;
+            this.t = t;
+        }
+
+        public Ed448Point getZ() {
+            return Z;
+        }
+
+        public byte[] getC() {
+            return c;
+        }
+
+        public byte[] getT() {
+            return t;
+        }
+    }
 
 }
