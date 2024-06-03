@@ -10,7 +10,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.Buffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -34,6 +33,9 @@ public class Main {
      */
     public static ArrayList<byte[]> zct;
 
+    /**
+     * Containing class for (Z, c, t) cryptogram.
+     */
     public static EncryptedData ellipticEncryption;
 
     /**
@@ -46,11 +48,20 @@ public class Main {
      */
     private static Ed448Point publicKey;
 
+    /**
+     * Used for calculating Goldilocks value r.
+     */
     private static final BigInteger r = (BigInteger.TWO).pow(446).subtract(
             new BigInteger("13818066809895115352007386748515426880336692474882178609894547503885"));
 
+    /**
+     *  h-value in signature generation.
+     */
     private static BigInteger h;
 
+    /**
+     *  z-value in signature generation.
+     */
     private static BigInteger z;
 
     /**
@@ -488,6 +499,11 @@ public class Main {
         }
     }
 
+    /**
+     * Decrypt a cryptogram (Z, c, t) under passphrase.
+     * @param pw the passphrase.
+     * @param TheOutputFile output file to write cryptogram to.
+     */
     public static void decryptWithPassphrase(byte[] pw, String TheOutputFile) {
         byte[] sKey = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
         BigInteger s = new BigInteger(sKey).multiply(BigInteger.valueOf(4)).mod(r);
@@ -522,6 +538,12 @@ public class Main {
         }
     }
 
+    /**
+     * Generating a signature for a byte array under passphrase.
+     * @param m byte array input
+     * @param pw the passphrase
+     * @param TheSignatureFile file to write signature to
+     */
     public static void signature(byte[] m, byte[] pw, String TheSignatureFile) {
         byte[] sBytes = sha3.KMACXOF256(pw, "".getBytes(), 448, "SK".getBytes());
         BigInteger s = new BigInteger(sBytes).multiply(BigInteger.valueOf(4)).mod(r);       // s <- 4s mod r
@@ -544,9 +566,12 @@ public class Main {
 
     }
 
+    /**
+     * Verify a signature (h, z) for a byte array under (Schnorr/DHIES) public key.
+     * @param m byte array input
+     * @param TheKeyFile the file to write the key to
+     */
     public static void verifySignature(byte[] m, String TheKeyFile) {
-        // read signature file
-//        readSignatureFile(TheSignatureFile);
 
         // read key file
         Ed448Point publicKey = readKeyFile(TheKeyFile);
@@ -565,6 +590,11 @@ public class Main {
         }
     }
 
+    /**
+     * Helper method to read file with key written into it and returns an Ed448Point.
+     * @param fileName file name to read through.
+     * @return elliptic curve point for further arithmetic.
+     */
     public static Ed448Point readKeyFile(String fileName) {
         BigInteger x = null;
         BigInteger y = null;
@@ -587,6 +617,10 @@ public class Main {
         }
     }
 
+    /**
+     * Helper method to read file with signature written into it and assigns signature value.
+     * @param fileName the file name to read from.
+     */
     public static void readSignatureFile(String fileName) {
         try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
             String line;
@@ -626,31 +660,6 @@ public class Main {
 
         public byte[] getT() {
             return t;
-        }
-    }
-
-    public static class Signature {
-
-        private final BigInteger h;
-
-        private final BigInteger z;
-
-        public Signature(BigInteger h, BigInteger z) {
-            this.h = h;
-            this.z = z;
-        }
-
-        public BigInteger getH() {
-            return h;
-        }
-
-        public BigInteger getZ() {
-            return z;
-        }
-
-        @Override
-        public String toString() {
-            return "H: " + h.toString() + "\nZ: " + z.toString();
         }
     }
 
