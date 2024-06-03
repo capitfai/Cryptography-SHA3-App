@@ -22,8 +22,6 @@ public class Ed448Point {
 
     public static final Ed448Point G = new Ed448Point(false, BigInteger.valueOf(8), P);
 
-    public static BigInteger publicKey = null;
-
     private BigInteger x;
     private BigInteger y;
 
@@ -63,32 +61,10 @@ public class Ed448Point {
         this.y = sqrt(v, P, xLsb);
     }
 
-    /**
-     * Constructor to create an Edwards point given the y-coordinate and
-     * a specified least significant bit for the x-coordinate.
-     *
-     * @param xLsb The least significant bit of the x-coordinate.
-     * @param y The y-coordinate of the point.
-     */
-    public Ed448Point(boolean xLsb, BigInteger y) {
-        this.y = y.mod(P);
-        BigInteger numerator = BigInteger.ONE.subtract(y.pow(2)).mod(P);
-        BigInteger denominator = BigInteger.ONE.subtract(D.multiply(y.pow(2))).mod(P);
-        BigInteger v = numerator.multiply(denominator.modInverse(P)).mod(P);
-        this.x = sqrt(v, P, xLsb);
-        if (this.x == null) {
-            throw new IllegalArgumentException("The provided y-coordinate does not yield a valid x-coordinate on the curve");
-        }
-    }
-
     public BigInteger getX() {
         return this.x;
     }
 
-
-    public BigInteger getY() {
-        return this.y;
-    }
 
     /**
      * Add this point to another point using the Edwards point addition formula.
@@ -96,7 +72,6 @@ public class Ed448Point {
      * @param pt The other point.
      * @return The sum of the points.
      */
-
     public Ed448Point add(Ed448Point pt) {
         BigInteger factor = this.x.multiply(this.y).multiply(pt.x).multiply(pt.y);
         BigInteger nX = (this.x.multiply(pt.y)).add(this.y.multiply(pt.x));
